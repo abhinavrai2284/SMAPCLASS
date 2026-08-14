@@ -5,7 +5,23 @@ from supabase import create_client, Client
 
 load_dotenv()
 
-supabase_url = st.secrets.get("SUPABASE_URL") if hasattr(st, "secrets") and "SUPABASE_URL" in st.secrets else os.getenv("SUPABASE_URL")
-supabase_key = st.secrets.get("SUPABASE_KEY") if hasattr(st, "secrets") and "SUPABASE_KEY" in st.secrets else os.getenv("SUPABASE_KEY")
+supabase_url = os.getenv("SUPABASE_URL")
+supabase_key = os.getenv("SUPABASE_KEY")
 
-supabase: Client = create_client(supabase_url, supabase_key)
+# Check st.secrets safely without crashing if secrets are not configured yet
+try:
+    if hasattr(st, "secrets"):
+        if not supabase_url and "SUPABASE_URL" in st.secrets:
+            supabase_url = str(st.secrets["SUPABASE_URL"]).strip()
+        if not supabase_key and "SUPABASE_KEY" in st.secrets:
+            supabase_key = str(st.secrets["SUPABASE_KEY"]).strip()
+except Exception:
+    pass
+
+supabase: Client = None
+
+if supabase_url and supabase_key:
+    try:
+        supabase = create_client(supabase_url, supabase_key)
+    except Exception as e:
+        print(f"Failed to initialize Supabase client: {e}")

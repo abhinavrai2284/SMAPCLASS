@@ -252,7 +252,7 @@ def teacher_tab_attendance_records():
 
         data.append({
             "ts_group": ts.split(".")[0] if ts else None,
-            "Time": datetime.fromisoformat(ts).strftime("%Y-%m-%d %I:%M %p") if ts else "N/A",
+            "Time": datetime.fromisoformat(ts).strftime("%Y-%m-%d %I:%M %p") if ts else "N'A",
             "Subject": r['subjects']['name'],
             "Subject Code":r['subjects']['subject_code'],
             "is_present": bool(r.get('is_present', False))
@@ -348,7 +348,7 @@ def register_teacher(teacher_username, teacher_name, teacher_pass, teacher_pass_
     
     try:
         create_teacher(teacher_username, teacher_pass, teacher_name)
-        return True, "Successfully Created! Login Now"
+        return True, "Sucessfully Created! Login Now"
     except Exception as e:
         return False, "Unexpected Error!"
     

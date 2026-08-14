@@ -10,9 +10,6 @@ def add_photos_dialog():
 
     st.write('Add classroom photos to scan for attendance')
 
-    if 'attendance_images' not in st.session_state:
-        st.session_state.attendance_images = []
-
     if 'photo_tab' not in st.session_state:
         st.session_state.photo_tab = 'camera'
 

@@ -1,5 +1,6 @@
 # Environment & Local Configuration
 .env
+.env.disabled
 .env.local
 .env.*.local
 !.env.example

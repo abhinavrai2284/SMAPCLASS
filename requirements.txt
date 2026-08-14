@@ -12,6 +12,7 @@ setuptools<70.0.0
 # Database & Auth
 supabase
 bcrypt
+python-dotenv
 
 # QR & Media
 segno

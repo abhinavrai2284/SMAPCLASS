@@ -8,17 +8,19 @@ try:
 except ImportError:
     pass
 
-supabase_url = os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_KEY")
+supabase_url = os.getenv("SUPABASE_URL") or os.getenv("supabase_url")
+supabase_key = os.getenv("SUPABASE_KEY") or os.getenv("supabase_key")
 
 # Check st.secrets safely without crashing if secrets are not configured yet
 try:
     if hasattr(st, "secrets"):
-        if not supabase_url and "SUPABASE_URL" in st.secrets:
-            supabase_url = str(st.secrets["SUPABASE_URL"]).strip()
-        if not supabase_key and "SUPABASE_KEY" in st.secrets:
-            supabase_key = str(st.secrets["SUPABASE_KEY"]).strip()
-except Exception:
+        for key in ["SUPABASE_URL", "supabase_url", "Supabase_Url"]:
+            if key in st.secrets and not supabase_url:
+                supabase_url = str(st.secrets[key]).strip()
+        for key in ["SUPABASE_KEY", "supabase_key", "Supabase_Key"]:
+            if key in st.secrets and not supabase_key:
+                supabase_key = str(st.secrets[key]).strip()
+except Exception as e:
     pass
 
 supabase: Client = None

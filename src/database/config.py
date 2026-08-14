@@ -8,25 +8,50 @@ try:
 except ImportError:
     pass
 
+# Default project credentials (publishable client key)
+DEFAULT_SUPABASE_URL = "https://lddkomsesyexjwdtskfh.supabase.co"
+DEFAULT_SUPABASE_KEY = "sb_publishable_NDLEyZZYU6y574euWYlV3g_TcKzESSZ"
+
 supabase_url = os.getenv("SUPABASE_URL") or os.getenv("supabase_url")
 supabase_key = os.getenv("SUPABASE_KEY") or os.getenv("supabase_key")
 
-# Check st.secrets safely without crashing if secrets are not configured yet
+# Check st.secrets safely with flexible lookup
 try:
     if hasattr(st, "secrets"):
-        for key in ["SUPABASE_URL", "supabase_url", "Supabase_Url"]:
-            if key in st.secrets and not supabase_url:
-                supabase_url = str(st.secrets[key]).strip()
-        for key in ["SUPABASE_KEY", "supabase_key", "Supabase_Key"]:
-            if key in st.secrets and not supabase_key:
-                supabase_key = str(st.secrets[key]).strip()
+        # 1. Top-level keys
+        for k in st.secrets:
+            k_lower = str(k).lower().replace("-", "_")
+            if "url" in k_lower and not supabase_url:
+                val = str(st.secrets[k]).strip().strip('"').strip("'")
+                if val.startswith("http"):
+                    supabase_url = val
+            if ("key" in k_lower or "token" in k_lower) and not supabase_key:
+                val = str(st.secrets[k]).strip().strip('"').strip("'")
+                supabase_key = val
+
+        # 2. Nested sections (e.g. [supabase] or [connections])
+        for section in ["supabase", "connections", "db"]:
+            if section in st.secrets and isinstance(st.secrets[section], dict):
+                sec = st.secrets[section]
+                for k, v in sec.items():
+                    k_lower = str(k).lower()
+                    v_str = str(v).strip().strip('"').strip("'")
+                    if "url" in k_lower and v_str.startswith("http"):
+                        supabase_url = v_str
+                    if "key" in k_lower or "token" in k_lower:
+                        supabase_key = v_str
 except Exception as e:
-    pass
+    print(f"Notice reading st.secrets: {e}")
+
+# Fallback to project defaults if not provided in environment or secrets
+if not supabase_url:
+    supabase_url = DEFAULT_SUPABASE_URL
+if not supabase_key:
+    supabase_key = DEFAULT_SUPABASE_KEY
 
 supabase: Client = None
 
-if supabase_url and supabase_key:
-    try:
-        supabase = create_client(supabase_url, supabase_key)
-    except Exception as e:
-        print(f"Failed to initialize Supabase client: {e}")
+try:
+    supabase = create_client(supabase_url, supabase_key)
+except Exception as e:
+    print(f"Failed to initialize Supabase client: {e}")

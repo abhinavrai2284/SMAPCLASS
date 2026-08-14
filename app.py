@@ -8,6 +8,8 @@ from src.ui.base_layout import style_base_layout
 
 
 def main():
+    st.set_page_config(layout="centered")
+
     if "login_type" not in st.session_state:
         st.session_state["login_type"] = None
 

@@ -1,21 +1,23 @@
-streamlit
-# Utilitites 
+streamlit>=1.54.0
 numpy
 pandas
-
-# FACE RECOGNITION
 scikit-learn
-dlib-bin
+
+# Face Recognition
+dlib-bin; sys_platform == 'win32'
+dlib; sys_platform != 'win32'
 git+https://github.com/ageitgey/face_recognition_models
 setuptools<70.0.0
 
-
+# Database & Auth
 supabase
 bcrypt
 
-
+# QR & Media
 segno
 pillow
 
+# Voice Processing
 librosa
+soundfile
 resemblyzer

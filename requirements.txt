@@ -3,9 +3,15 @@ supabase
 httpx
 python-dotenv
 numpy
+scipy
 pandas
 scikit-learn
 segno
 pillow
 bcrypt
 setuptools<70.0.0
+
+# Audio processing
+librosa
+soundfile
+resemblyzer

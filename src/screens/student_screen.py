@@ -12,18 +12,11 @@ from src.database.db import get_all_students, create_student, get_student_subjec
 import time
 
 from src.components.dialog_enroll import enroll_dialog
-from src.components.dialog_auto_enroll import auto_enroll_dialog
 from src.components.subject_card import subject_card
 
 def student_dashboard():
     student_data = st.session_state.student_data
     student_id = student_data['student_id']
-
-    # Auto enroll if join-code was provided in URL query parameters
-    join_code = st.query_params.get("join-code") or st.query_params.get("join_code")
-    if join_code:
-        auto_enroll_dialog(join_code)
-
     c1, c2 = st.columns(2, vertical_alignment='center', gap='xxlarge')
     with c1:
         header_dashboard()
@@ -73,11 +66,11 @@ def student_dashboard():
 
 
         stats = stats_map.get(sid,{"total":0, "attended": 0} )
-        def unenroll_button(s_id=sid, s_name=sub['name']):
-            if st.button("Unenroll from this course", type='tertiary', width='stretch', icon=':material/delete_forever:', key=f"unenroll_{s_id}"):
-                unenroll_student_to_subject(student_id, s_id)
-                st.toast(f"Unenrolled from {s_name} successfully!")
-                st.rerun()
+        def unenroll_button():
+                if st.button("Unenroll from tihs course", type='tertiary', width='stretch', icon=':material/delete_forever:'):
+                    unenroll_student_to_subject(student_id, sid)
+                    st.toast(f'Unenrolled from {sub['name']} successfully!')
+                    st.rerun()
 
         with cols[i % 2]:
 
@@ -140,7 +133,7 @@ def student_screen():
                         st.session_state.is_logged_in = True
                         st.session_state.user_role = 'student'
                         st.session_state.student_data = student
-                        st.toast(f"Welcome Back {student['name']}")
+                        st.toast(f'Welcome Back {student['name']}')
                         time.sleep(1)
                         st.rerun()
                 else:
@@ -152,7 +145,7 @@ def student_screen():
             new_name = st.text_input("Enter your name", placeholder='E.g. Hamza Rizvi')
 
             st.subheader('Optional : Voice Enrollment')
-            st.info("Enroll your voice for audio-based attendance")
+            st.info("Enroll your for voice only attendance")
 
 
             audio_data = None
@@ -160,7 +153,7 @@ def student_screen():
             try:
                 audio_data = st.audio_input('Record a short phrase like I am present, My name is Akash.')
             except Exception:
-                st.error('Audio recording failed!')
+                st.error('Audio Data failed!')
 
             if st.button('Create Account', type='primary'):
                 if new_name:
@@ -185,7 +178,7 @@ def student_screen():
                                 time.sleep(1)
                                 st.rerun()
                         else:
-                            st.error("Couldn't capture your facial features for registration")
+                            st.error('Couldnt capture your facial features for registration')
 
                 else:
                     st.warning('Please enter your name!')

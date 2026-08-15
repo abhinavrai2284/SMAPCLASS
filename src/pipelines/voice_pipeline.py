@@ -1,4 +1,9 @@
-from resemblyzer import VoiceEncoder, preprocess_wav
+try:
+    from resemblyzer import VoiceEncoder, preprocess_wav
+except ImportError:
+    VoiceEncoder = None
+    preprocess_wav = None
+
 import numpy as np 
 import io
 import librosa
@@ -7,6 +12,8 @@ import streamlit as st
 
 @st.cache_resource
 def load_voice_encoder():
+    if VoiceEncoder is None:
+        return None
     return VoiceEncoder()
 
 

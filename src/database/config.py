@@ -1,6 +1,11 @@
 import os
 import streamlit as st
-from supabase import create_client, Client
+
+try:
+    from supabase import create_client, Client
+except ImportError:
+    create_client = None
+    Client = None
 
 try:
     from dotenv import load_dotenv
@@ -41,7 +46,7 @@ try:
                     if "key" in k_lower or "token" in k_lower:
                         supabase_key = v_str
 except Exception as e:
-    print(f"Notice reading st.secrets: {e}")
+    pass
 
 # Fallback to project defaults if not provided in environment or secrets
 if not supabase_url:
@@ -49,9 +54,10 @@ if not supabase_url:
 if not supabase_key:
     supabase_key = DEFAULT_SUPABASE_KEY
 
-supabase: Client = None
+supabase = None
 
-try:
-    supabase = create_client(supabase_url, supabase_key)
-except Exception as e:
-    print(f"Failed to initialize Supabase client: {e}")
+if create_client and supabase_url and supabase_key:
+    try:
+        supabase = create_client(supabase_url, supabase_key)
+    except Exception as e:
+        print(f"Failed to initialize Supabase client: {e}")

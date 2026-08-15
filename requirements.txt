@@ -1,24 +1,16 @@
 streamlit>=1.54.0
-numpy
-pandas
-scikit-learn
-
-# Face Recognition
-dlib-bin; sys_platform == 'win32'
-dlib; sys_platform != 'win32'
-git+https://github.com/ageitgey/face_recognition_models
-setuptools<70.0.0
-
-# Database & Auth
 supabase
 bcrypt
 python-dotenv
-
-# QR & Media
+numpy
+pandas
+scikit-learn
 segno
 pillow
-
-# Voice Processing
-librosa
 soundfile
+librosa
 resemblyzer
+setuptools<70.0.0
+git+https://github.com/ageitgey/face_recognition_models
+dlib-bin; sys_platform == 'win32'
+dlib; sys_platform != 'win32'

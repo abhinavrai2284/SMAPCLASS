@@ -1,19 +1,11 @@
 streamlit>=1.54.0
 supabase
-gotrue
-postgrest
 httpx
-bcrypt
 python-dotenv
 numpy
 pandas
 scikit-learn
 segno
 pillow
-soundfile
-librosa
-resemblyzer
+bcrypt
 setuptools<70.0.0
-face-recognition-models
-dlib-bin; sys_platform == 'win32'
-dlib; sys_platform != 'win32'

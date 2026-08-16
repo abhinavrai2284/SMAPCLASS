@@ -10,8 +10,9 @@ segno
 pillow
 bcrypt
 setuptools<70.0.0
-
-# Audio processing
+face-recognition-models
+dlib-bin; sys_platform == 'win32'
+dlib; sys_platform != 'win32'
 librosa
 soundfile
 resemblyzer

@@ -23,6 +23,7 @@
 - **Frontend Portal**: [Flask](https://flask.palletsprojects.com/) in `frontend/`, responsive HTML5/CSS3.
 - **Database & Cloud**: [Supabase](https://supabase.com/) (PostgreSQL & Vector Storage).
 - **QR Code Generation**: `segno`.
+- **Containerization**: Docker & Docker Compose support.
 
 ---
 
@@ -57,6 +58,35 @@ Open **http://localhost:5000** in your browser to access the landing page and la
 
 ---
 
+## 📦 Docker Deployment
+
+A Docker image is provided to run the app on any container platform (Cloud Run, ECS, DigitalOcean, etc.). Build and run locally:
+
+```bash
+# Build the image
+docker build -t snapclass:latest .
+
+# Run the container (exposes port 8501)
+docker run -p 8501:8501 \
+   -e SUPABASE_URL="https://your-project.supabase.co" \
+   -e SUPABASE_KEY="your-supabase-key" \
+   snapclass:latest
+```
+
+The container starts Streamlit on port 8501 by default. For platforms that provide a dynamic port, set the `PORT` environment variable; the Docker `CMD` supports `$PORT`.
+
+---
+
+## ⚙️ Heroku / Cloud PaaS
+
+You can deploy to Heroku-like platforms using the `Procfile` included in the repo:
+
+```
+web: streamlit run app.py --server.port $PORT --server.address 0.0.0.0
+```
+
+---
+
 ## ☁️ Deploying to Streamlit Cloud
 
 1. Push your code to GitHub (ensure `.streamlit/secrets.toml` is **not** committed).
@@ -67,6 +97,14 @@ Open **http://localhost:5000** in your browser to access the landing page and la
    - **Main file path**: `app.py`
 4. Expand **Advanced settings** -> **Secrets** and configure `SUPABASE_URL` and `SUPABASE_KEY`.
 5. Click **Deploy!**
+
+> **Note**: `packages.txt` is pre-configured with Linux system packages (`cmake`, `libopenblas-dev`, `libsndfile1`, `ffmpeg`) needed for `dlib` and audio processing on Streamlit Cloud.
+
+---
+
+## 🔐 Secrets & Security
+
+Never commit `secrets.toml` or your Supabase keys. Use your host's secret management (Streamlit Cloud secrets, Heroku Config Vars, or environment variables) to provide `SUPABASE_URL` and `SUPABASE_KEY`.
 
 ---
 

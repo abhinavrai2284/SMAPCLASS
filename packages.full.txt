@@ -1,0 +1,7 @@
+build-essential
+cmake
+libopenblas-dev
+liblapack-dev
+libsndfile1
+ffmpeg
+libgl1

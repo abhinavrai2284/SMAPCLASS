@@ -17,15 +17,15 @@ def open_app():
 
 @app.route('/teacher')
 def teacher_portal():
-    return redirect(f"{STREAMLIT_URL}")
+    return redirect(f"{STREAMLIT_URL}/?role=teacher")
 
 @app.route('/student')
 def student_portal():
-    return redirect(f"{STREAMLIT_URL}")
+    return redirect(f"{STREAMLIT_URL}/?role=student")
 
 @app.route('/join/<code_id>')
 def join_subject(code_id):
-    return redirect(f"{STREAMLIT_URL}/?join-code={code_id}")
+    return redirect(f"{STREAMLIT_URL}/?role=student&join-code={code_id}")
 
 @app.route('/embed')
 def embed_view():

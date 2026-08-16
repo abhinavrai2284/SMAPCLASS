@@ -43,7 +43,6 @@
                 <circle cx="150" cy="90" r="45" fill="#5865F2" fill-opacity="0.2" stroke="#5865F2" stroke-width="2"/>
                 <circle cx="150" cy="80" r="22" fill="#5865F2"/>
                 <path d="M125 120C125 106 136 98 150 98C164 98 175 106 175 120" stroke="#5865F2" stroke-width="3" stroke-linecap="round"/>
-                <!-- Recognition scan lines -->
                 <path d="M100 50 H90 V60" stroke="#4BB786" stroke-width="3" stroke-linecap="round"/>
                 <path d="M200 50 H210 V60" stroke="#4BB786" stroke-width="3" stroke-linecap="round"/>
                 <path d="M100 130 H90 V120" stroke="#4BB786" stroke-width="3" stroke-linecap="round"/>
@@ -61,7 +60,6 @@
                 <text x="24" y="38" font-family="'Outfit', sans-serif" font-size="14" fill="#ffffff" font-weight="700">Live Class Metrics</text>
                 <rect x="220" y="24" width="56" height="20" rx="10" fill="#4BB786" fill-opacity="0.2"/>
                 <text x="248" y="38" font-family="'Outfit', sans-serif" font-size="10" fill="#4BB786" font-weight="700" text-anchor="middle">LIVE</text>
-                <!-- Mini Bar Graph -->
                 <rect x="30" y="140" width="28" height="50" rx="6" fill="#5865F2"/>
                 <rect x="70" y="110" width="28" height="80" rx="6" fill="#5865F2"/>
                 <rect x="110" y="90" width="28" height="100" rx="6" fill="#5865F2"/>
@@ -91,13 +89,14 @@
         </form>
 
         <div class="hero-actions">
-            <button onclick="openAppModal('{{ streamlit_url }}')" class="btn-cta" style="border: none; cursor: pointer;">
-                <span>🚀</span> Open Live Portal
+            <button onclick="openAppModal('{{ streamlit_url }}/?role=teacher')" class="btn-cta" style="border: none; cursor: pointer;">
+                <span>👨‍🏫</span> Faculty Dashboard
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </button>
-            <a href="{{ streamlit_url }}" target="_blank" rel="noopener" class="link-action">
-                Open in Full Window ↗
-            </a>
+            <button onclick="openAppModal('{{ streamlit_url }}/?role=student')" class="btn-cta" style="border: none; cursor: pointer; background: #1e1e2f;">
+                <span>🎓</span> Student FaceID Portal
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </button>
         </div>
 
         <div class="integrated">
@@ -147,10 +146,10 @@
                     </ul>
                 </div>
                 <div class="portal-actions-row">
-                    <button onclick="openAppModal('{{ streamlit_url }}')" class="portal-btn primary">
+                    <button onclick="openAppModal('{{ streamlit_url }}/?role=teacher')" class="portal-btn primary">
                         Open Teacher Dashboard 👨‍🏫
                     </button>
-                    <a href="{{ streamlit_url }}" target="_blank" rel="noopener" class="portal-btn secondary" title="Open in new window">
+                    <a href="{{ streamlit_url }}/?role=teacher" target="_blank" rel="noopener" class="portal-btn secondary" title="Open in new window">
                         ↗
                     </a>
                 </div>
@@ -175,10 +174,10 @@
                     </ul>
                 </div>
                 <div class="portal-actions-row">
-                    <button onclick="openAppModal('{{ streamlit_url }}')" class="portal-btn primary" style="background: #1e1e2f;">
+                    <button onclick="openAppModal('{{ streamlit_url }}/?role=student')" class="portal-btn primary" style="background: #1e1e2f;">
                         Open Student Dashboard 🎓
                     </button>
-                    <a href="{{ streamlit_url }}" target="_blank" rel="noopener" class="portal-btn secondary" title="Open in new window">
+                    <a href="{{ streamlit_url }}/?role=student" target="_blank" rel="noopener" class="portal-btn secondary" title="Open in new window">
                         ↗
                     </a>
                 </div>
@@ -236,27 +235,17 @@
                 <div class="flow-image">
                     <svg viewBox="0 0 600 360" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 100%; display: block; background: #0f172a;">
                         <rect width="600" height="360" fill="#0b0f19"/>
-                        <!-- QR Code & Setup Simulation -->
                         <rect x="40" y="40" width="220" height="280" rx="16" fill="#182234" stroke="#334155"/>
                         <text x="150" y="80" font-family="'Outfit', sans-serif" font-size="14" fill="#ffffff" font-weight="700" text-anchor="middle">Subject: CS301 (AI)</text>
-                        <!-- Stylized QR blocks -->
                         <rect x="75" y="105" width="150" height="150" rx="10" fill="#ffffff"/>
                         <rect x="90" y="120" width="40" height="40" fill="#000000"/>
-                        <rect x="98" y="128" width="24" height="24" fill="#ffffff"/>
-                        <rect x="105" y="135" width="10" height="10" fill="#000000"/>
                         <rect x="170" y="120" width="40" height="40" fill="#000000"/>
-                        <rect x="178" y="128" width="24" height="24" fill="#ffffff"/>
-                        <rect x="185" y="135" width="10" height="10" fill="#000000"/>
                         <rect x="90" y="200" width="40" height="40" fill="#000000"/>
-                        <rect x="98" y="208" width="24" height="24" fill="#ffffff"/>
-                        <rect x="105" y="215" width="10" height="10" fill="#000000"/>
                         <rect x="145" y="175" width="20" height="20" fill="#5865F2"/>
                         <text x="150" y="290" font-family="'Outfit', sans-serif" font-size="13" fill="#4BB786" font-weight="800" text-anchor="middle">CODE: AI-2026</text>
 
-                        <!-- Right Panel: Student List -->
                         <rect x="290" y="40" width="270" height="280" rx="16" fill="#1e293b"/>
                         <text x="310" y="75" font-family="'Outfit', sans-serif" font-size="14" fill="#ffffff" font-weight="700">Enrolled Roster (48)</text>
-                        
                         <rect x="310" y="95" width="230" height="40" rx="8" fill="#0f172a"/>
                         <circle cx="330" cy="115" r="12" fill="#5865F2"/>
                         <text x="352" y="120" font-family="'Outfit', sans-serif" font-size="12" fill="#e2e8f0" font-weight="600">Aarav Sharma</text>
@@ -283,11 +272,9 @@
                 <div class="flow-image">
                     <svg viewBox="0 0 600 360" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 100%; display: block; background: #0f172a;">
                         <rect width="600" height="360" fill="#0b0f19"/>
-                        <!-- Top Header -->
                         <rect x="40" y="30" width="520" height="50" rx="10" fill="#1e293b"/>
                         <text x="60" y="60" font-family="'Outfit', sans-serif" font-size="16" fill="#ffffff" font-weight="700">AI Facial & Voice Pipeline Active</text>
                         
-                        <!-- Table Rows -->
                         <rect x="40" y="95" width="520" height="48" rx="8" fill="#182234"/>
                         <text x="60" y="125" font-family="'Outfit', sans-serif" font-size="13" fill="#cbd5e1" font-weight="600">01. Devansh Verma (Face Scan)</text>
                         <text x="320" y="125" font-family="'Outfit', sans-serif" font-size="12" fill="#94a3b8">Score: 0.99</text>
@@ -330,7 +317,6 @@
                 <div class="flow-image">
                     <svg viewBox="0 0 600 360" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 100%; display: block; background: #0f172a;">
                         <rect width="600" height="360" fill="#0b0f19"/>
-                        <!-- Top Summary Cards -->
                         <rect x="40" y="30" width="160" height="90" rx="12" fill="#1e293b"/>
                         <text x="60" y="60" font-family="'Outfit', sans-serif" font-size="12" fill="#94a3b8">Total Enrolled</text>
                         <text x="60" y="95" font-family="'Outfit', sans-serif" font-size="28" fill="#ffffff" font-weight="800">50</text>
@@ -343,18 +329,10 @@
                         <text x="420" y="60" font-family="'Outfit', sans-serif" font-size="12" fill="#94a3b8">Attendance Rate</text>
                         <text x="420" y="95" font-family="'Outfit', sans-serif" font-size="28" fill="#5865F2" font-weight="800">96.0%</text>
 
-                        <!-- Chart Area -->
                         <rect x="40" y="140" width="520" height="180" rx="12" fill="#182234"/>
                         <text x="60" y="170" font-family="'Outfit', sans-serif" font-size="14" fill="#ffffff" font-weight="700">Weekly Attendance Trend</text>
-                        <!-- Sparkline path -->
                         <path d="M60 270 Q130 220, 200 240 T340 190 T480 200 L520 180" fill="none" stroke="#5865F2" stroke-width="4" stroke-linecap="round"/>
                         <circle cx="520" cy="180" r="6" fill="#4BB786"/>
-                        <!-- Labels -->
-                        <text x="60" y="300" font-family="'Outfit', sans-serif" font-size="11" fill="#94a3b8">Mon</text>
-                        <text x="175" y="300" font-family="'Outfit', sans-serif" font-size="11" fill="#94a3b8">Tue</text>
-                        <text x="290" y="300" font-family="'Outfit', sans-serif" font-size="11" fill="#94a3b8">Wed</text>
-                        <text x="405" y="300" font-family="'Outfit', sans-serif" font-size="11" fill="#94a3b8">Thu</text>
-                        <text x="510" y="300" font-family="'Outfit', sans-serif" font-size="11" fill="#94a3b8">Fri</text>
                     </svg>
                 </div>
             </div>
@@ -398,12 +376,12 @@
         <h2>Ready to Experience SMAPCLASS?</h2>
         <p>Experience the future of seamless AI attendance tracking and classroom management today.</p>
         <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-            <button onclick="openAppModal('{{ streamlit_url }}')" class="btn-white" style="border: none; cursor: pointer;">
-                Launch Live App Now 🚀
+            <button onclick="openAppModal('{{ streamlit_url }}/?role=teacher')" class="btn-white" style="border: none; cursor: pointer;">
+                Launch Faculty Dashboard 👨‍🏫
             </button>
-            <a href="{{ streamlit_url }}" target="_blank" rel="noopener" class="btn-white" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid white;">
-                Open in New Tab ↗
-            </a>
+            <button onclick="openAppModal('{{ streamlit_url }}/?role=student')" class="btn-white" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid white; cursor: pointer;">
+                Launch Student Portal 🎓
+            </button>
         </div>
     </section>
 
@@ -420,9 +398,8 @@
             <div class="footer-links">
                 <h4>Direct Portals</h4>
                 <ul>
-                    <li><a href="javascript:void(0)" onclick="openAppModal('{{ streamlit_url }}')">Teacher Dashboard</a></li>
-                    <li><a href="javascript:void(0)" onclick="openAppModal('{{ streamlit_url }}')">Student Portal</a></li>
-                    <li><a href="javascript:void(0)" onclick="document.getElementById('quickJoinInput').focus(); window.scrollTo({top:0, behavior:'smooth'})">Join Subject Code</a></li>
+                    <li><a href="javascript:void(0)" onclick="openAppModal('{{ streamlit_url }}/?role=teacher')">Teacher Dashboard</a></li>
+                    <li><a href="javascript:void(0)" onclick="openAppModal('{{ streamlit_url }}/?role=student')">Student Portal</a></li>
                 </ul>
             </div>
             <div class="footer-links">
@@ -436,8 +413,6 @@
             <div class="footer-links">
                 <h4>Connected Endpoints</h4>
                 <ul>
-                    <li><a href="/api/status" target="_blank">Engine Health API</a></li>
-                    <li><a href="{{ streamlit_url }}" target="_blank">Streamlit Port (8501)</a></li>
                     <li><a href="https://github.com/abhinavrai2284/SMAPCLASS" target="_blank" rel="noopener">GitHub Repository</a></li>
                 </ul>
             </div>
@@ -471,7 +446,7 @@
                 </div>
             </div>
             <div class="modal-body">
-                <iframe id="modalAppFrame" class="modal-iframe" src="about:blank" allow="camera; microphone" allowfullscreen></iframe>
+                <iframe id="modalAppFrame" class="modal-iframe" src="about:blank" allow="camera; microphone; display-capture; autoplay" allowfullscreen></iframe>
             </div>
         </div>
     </div>
@@ -536,7 +511,7 @@
             event.preventDefault();
             const code = document.getElementById('quickJoinInput').value.trim();
             if (code) {
-                const joinUrl = `${STREAMLIT_BASE_URL}/?join-code=${encodeURIComponent(code)}`;
+                const joinUrl = `${STREAMLIT_BASE_URL}/?role=student&join-code=${encodeURIComponent(code)}`;
                 openAppModal(joinUrl);
             }
         }

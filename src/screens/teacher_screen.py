@@ -1,3 +1,4 @@
+import base64
 import streamlit as st
 import numpy as np
 from datetime import datetime
@@ -18,6 +19,11 @@ from src.database.db import (
     enroll_student_to_subject,
     get_defaulter_students_for_teacher,
     parse_student_details,
+)
+from src.database.materials import (
+    upload_subject_pdf,
+    get_subject_materials,
+    delete_subject_pdf,
 )
 from src.components.dialog_create_subject import create_subject_dialog
 from src.components.dialog_share_subject import share_subject_dialog
@@ -82,7 +88,7 @@ def teacher_dashboard():
 
     with tab2:
         type2 = "primary" if st.session_state.current_teacher_tab == 'manage_subjects' else "tertiary"
-        if st.button('📚 Manage Subjects', type=type2, use_container_width=True):
+        if st.button('📚 Subjects & PDFs', type=type2, use_container_width=True):
             st.session_state.current_teacher_tab = 'manage_subjects'
             st.rerun()
 
@@ -236,7 +242,7 @@ def teacher_tab_manage_subjects():
     teacher_id = st.session_state.teacher_data['teacher_id']
     col1, col2 = st.columns([2, 1], vertical_alignment='center')
     with col1:
-        st.markdown("<h2 style='color: #1e293b; font-size: 1.6rem; margin: 0;'>Manage Subjects</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='color: #1e293b; font-size: 1.6rem; margin: 0;'>Manage Subjects & Study Materials</h2>", unsafe_allow_html=True)
     with col2:
         if st.button('➕ Create New Subject', type='primary', use_container_width=True):
             create_subject_dialog(teacher_id)
@@ -246,22 +252,87 @@ def teacher_tab_manage_subjects():
     subjects = get_teacher_subjects(teacher_id)
     if subjects:
         for sub in subjects:
+            s_id = sub['subject_id']
+            s_name = sub['name']
+            s_code = sub['subject_code']
+            s_sec = sub['section']
+
+            # Get materials count for this subject
+            mats = get_subject_materials(s_id)
+            mat_count = len(mats)
+
             stats = [
                 ("🫂", "Students", sub['total_students']),
                 ("🕰️", "Classes", sub['total_classes']),
+                ("📄", "PDF Notes", mat_count),
             ]
 
-            def make_share_btn(s_name=sub['name'], s_code=sub['subject_code']):
-                if st.button(f"🔗 Share Code: {s_code}", key=f"share_{s_code}", use_container_width=True):
-                    share_subject_dialog(s_name, s_code)
+            def make_share_btn(name_val=s_name, code_val=s_code):
+                if st.button(f"🔗 Share Code: {code_val}", key=f"share_{code_val}", use_container_width=True):
+                    share_subject_dialog(name_val, code_val)
 
             subject_card(
-                name=sub['name'],
-                code=sub['subject_code'],
-                section=sub['section'],
+                name=s_name,
+                code=s_code,
+                section=s_sec,
                 stats=stats,
                 footer_callback=make_share_btn
             )
+
+            # Course Materials & PDF Upload Accordion for this Subject
+            with st.expander(f"📄 Upload & Manage PDF Notes for {s_name} ({mat_count} active)", expanded=False):
+                up_col1, up_col2 = st.columns([2, 1], vertical_alignment="bottom")
+                with up_col1:
+                    pdf_title = st.text_input(f"Document Title", placeholder="e.g. Unit 1: Introduction to Data Structures", key=f"title_{s_id}")
+                    uploaded_pdf = st.file_uploader(f"Choose PDF File", type=["pdf"], key=f"pdf_up_{s_id}")
+                with up_col2:
+                    if st.button("📤 Upload PDF to Students", type="primary", use_container_width=True, key=f"btn_up_{s_id}"):
+                        if uploaded_pdf is not None:
+                            with st.spinner("Uploading and syncing PDF with all enrolled students..."):
+                                pdf_bytes = uploaded_pdf.getvalue()
+                                filename = uploaded_pdf.name
+                                doc_title = pdf_title.strip() if pdf_title and pdf_title.strip() else filename
+                                upload_subject_pdf(s_id, teacher_id, doc_title, filename, pdf_bytes)
+                                st.toast(f"✅ '{filename}' uploaded successfully for all enrolled students!", icon="🎉")
+                                time.sleep(1)
+                                st.rerun()
+                        else:
+                            st.error("Please select a PDF file to upload.")
+
+                # List currently uploaded PDFs for this subject
+                if mats:
+                    st.markdown("<div style='font-weight: 600; color: #1e293b; margin-top: 1rem; margin-bottom: 0.5rem;'>Active PDFs for Enrolled Students:</div>", unsafe_allow_html=True)
+                    for m in mats:
+                        m_id = m['id']
+                        m_title = m['title']
+                        m_fname = m['filename']
+                        m_size = m['file_size']
+                        m_date = m.get('uploaded_at', '')[:10]
+
+                        card_c1, card_c2, card_c3 = st.columns([3, 1, 1], vertical_alignment="center")
+                        with card_c1:
+                            st.markdown(f"**📄 {m_title}** &nbsp;•&nbsp; `<small>{m_fname} ({m_size}) - {m_date}</small>`", unsafe_allow_html=True)
+                        with card_c2:
+                            if m.get('file_data'):
+                                raw_bytes = base64.b64decode(m['file_data'])
+                                st.download_button(
+                                    label="⬇️ Download",
+                                    data=raw_bytes,
+                                    file_name=m_fname,
+                                    mime="application/pdf",
+                                    key=f"dl_t_{s_id}_{m_id}",
+                                    use_container_width=True
+                                )
+                        with card_c3:
+                            if st.button("🗑️ Delete", key=f"del_{s_id}_{m_id}", use_container_width=True, type="secondary"):
+                                delete_subject_pdf(m_id, s_id)
+                                st.toast(f"🗑️ '{m_fname}' deleted from portal for all students!", icon="⚠️")
+                                time.sleep(1)
+                                st.rerun()
+                else:
+                    st.caption("ℹ️ No PDF notes uploaded yet for this subject. Upload lecture slides or notes above.")
+
+            st.markdown("<div style='height: 0.8rem;'></div>", unsafe_allow_html=True)
     else:
         st.info("No subjects found. Click **'➕ Create New Subject'** above to create your first class!")
 

@@ -1,6 +1,7 @@
 import io
 import json
 import time
+import base64
 import numpy as np
 import pandas as pd
 from datetime import datetime
@@ -21,6 +22,7 @@ from src.database.db import (
     create_attendance,
     parse_student_details,
 )
+from src.database.materials import get_student_course_materials
 from src.components.dialog_enroll import enroll_dialog
 from src.components.subject_card import subject_card
 
@@ -216,9 +218,10 @@ def student_dashboard():
     st.divider()
 
     # Dashboard Tabs
-    tab_today, tab_subjects, tab_history = st.tabs([
+    tab_today, tab_subjects, tab_materials, tab_history = st.tabs([
         "📋 Today's Attendance",
         "📚 Enrolled Subjects",
+        "📄 Course Notes & PDFs (अध्ययन सामग्री)",
         "📜 Full History",
     ])
 
@@ -286,7 +289,48 @@ def student_dashboard():
         else:
             st.info("You haven't enrolled in any subjects yet. Click **'➕ Enroll in Subject'** above to join your classes.")
 
-    # TAB 3: FULL HISTORY
+    # TAB 3: COURSE NOTES & PDFS
+    with tab_materials:
+        st.subheader("📚 Subject Study Materials & PDF Notes")
+        st.caption("Lecture slides, notes, and study materials uploaded by your course instructors:")
+
+        materials = get_student_course_materials(student_id)
+        if materials:
+            for idx, m in enumerate(materials):
+                m_title = m.get('title')
+                m_fname = m.get('filename')
+                m_sub = m.get('subject_name')
+                m_code = m.get('subject_code')
+                m_sec = m.get('section')
+                m_size = m.get('file_size')
+                m_date = m.get('uploaded_at', '')[:10]
+                m_b64 = m.get('file_data')
+
+                st.markdown(f"""
+                    <div style="background: white; border: 1px solid #e2e8f0; border-left: 6px solid #6366f1; border-radius: 14px; padding: 16px 20px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #1e293b;">📄 {m_title}</div>
+                        <div style="color: #64748b; font-size: 0.88rem; margin-top: 4px;">
+                            📚 Course: <b>{m_sub} ({m_code})</b> &nbsp;•&nbsp; Section: <b>{m_sec}</b> &nbsp;•&nbsp; 📦 Size: <b>{m_size}</b> &nbsp;•&nbsp; 📅 Uploaded: <b>{m_date}</b>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+                if m_b64:
+                    raw_bytes = base64.b64decode(m_b64)
+                    st.download_button(
+                        label=f"⬇️ Download {m_fname} ({m_size})",
+                        data=raw_bytes,
+                        file_name=m_fname,
+                        mime="application/pdf",
+                        key=f"stu_dl_pdf_{idx}_{m['id']}",
+                        use_container_width=True,
+                        type="primary"
+                    )
+                st.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
+        else:
+            st.info("ℹ️ **No PDF notes uploaded yet for your enrolled subjects.**\n\nWhen your teacher uploads study materials or lecture notes, they will automatically appear here for instant download.")
+
+    # TAB 4: FULL HISTORY
     with tab_history:
         st.subheader("Complete Attendance History")
         if all_logs_formatted:

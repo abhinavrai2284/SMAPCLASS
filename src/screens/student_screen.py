@@ -53,17 +53,21 @@ def student_dashboard():
     student_id = student_data['student_id']
 
     # Header and logout bar
-    c1, c2 = st.columns(2, vertical_alignment='center', gap='xxlarge')
+    c1, c2 = st.columns([1.2, 1.8], vertical_alignment='center')
     with c1:
         header_dashboard()
     with c2:
-        st.subheader(f"Welcome, {student_data['name']} 👋")
-        if st.button("Logout", type='secondary', key='loginbackbtn', shortcut="control+backspace", icon=":material/logout:"):
-            st.session_state['is_logged_in'] = False
-            del st.session_state.student_data
-            st.rerun()
+        sub_c1, sub_c2 = st.columns([2, 1], vertical_alignment='center')
+        with sub_c1:
+            st.markdown(f"<div style='font-size: 1.3rem; font-weight: 700; color: #1e293b;'>Welcome, {student_data['name']} 👋</div>", unsafe_allow_html=True)
+        with sub_c2:
+            if st.button("🚪 Logout", type='secondary', key='loginbackbtn', use_container_width=True):
+                st.session_state['is_logged_in'] = False
+                if 'student_data' in st.session_state:
+                    del st.session_state.student_data
+                st.rerun()
 
-    st.space()
+    st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
 
     # Load student data
     with st.spinner('Loading attendance records...'):
@@ -143,9 +147,9 @@ def student_dashboard():
 
     # Dashboard Tabs
     tab_today, tab_subjects, tab_history = st.tabs([
-        "📋 Today's Attendance (आज की हाज़िरी)",
-        "📚 Enrolled Subjects (दाखिल विषय)",
-        "📜 Full History (पूरा रिकॉर्ड)",
+        "📋 Today's Attendance",
+        "📚 Enrolled Subjects",
+        "📜 Full History",
     ])
 
     # TAB 1: TODAY'S ATTENDANCE LIST
@@ -157,7 +161,6 @@ def student_dashboard():
             for item in today_logs:
                 render_today_attendance_card(item)
 
-            # Also provide a quick summary dataframe view option
             with st.expander("📊 View as Table"):
                 df_today = pd.DataFrame([
                     {
@@ -169,17 +172,17 @@ def student_dashboard():
                     }
                     for item in today_logs
                 ])
-                st.dataframe(df_today, hide_index=True, width='stretch')
+                st.dataframe(df_today, hide_index=True, use_container_width=True)
         else:
             st.info(f"ℹ️ **No attendance marked for today yet ({today_display}).**\n\nWhen your teacher takes attendance in class, your status (**Present** / **Absent**) will appear here automatically.")
 
     # TAB 2: ENROLLED SUBJECTS
     with tab_subjects:
-        c1, c2 = st.columns(2)
+        c1, c2 = st.columns([2, 1], vertical_alignment='center')
         with c1:
             st.subheader('Your Enrolled Subjects')
         with c2:
-            if st.button('Enroll in Subject', type='primary', width='stretch'):
+            if st.button('➕ Enroll in Subject', type='primary', use_container_width=True):
                 enroll_dialog()
 
         if subjects:
@@ -191,7 +194,7 @@ def student_dashboard():
 
                 def make_unenroll_callback(s_id=sid, s_name=sub['name']):
                     def unenroll_button():
-                        if st.button("Unenroll from this course", type='tertiary', width='stretch', icon=':material/delete_forever:', key=f"unenroll_{s_id}"):
+                        if st.button("🗑️ Unenroll", type='tertiary', use_container_width=True, key=f"unenroll_{s_id}"):
                             unenroll_student_to_subject(student_id, s_id)
                             st.toast(f'Unenrolled from {s_name} successfully!')
                             st.rerun()
@@ -209,7 +212,7 @@ def student_dashboard():
                         footer_callback=make_unenroll_callback(sid, sub['name']),
                     )
         else:
-            st.info("You haven't enrolled in any subjects yet. Click **'Enroll in Subject'** above to join your classes.")
+            st.info("You haven't enrolled in any subjects yet. Click **'➕ Enroll in Subject'** above to join your classes.")
 
     # TAB 3: FULL HISTORY
     with tab_history:
@@ -226,7 +229,7 @@ def student_dashboard():
                 }
                 for item in sorted(all_logs_formatted, key=lambda x: x['timestamp'], reverse=True)
             ])
-            st.dataframe(df_history, hide_index=True, width='stretch')
+            st.dataframe(df_history, hide_index=True, use_container_width=True)
         else:
             st.info("No attendance history found.")
 
@@ -241,18 +244,20 @@ def student_screen():
         student_dashboard()
         return
 
-    c1, c2 = st.columns(2, vertical_alignment='center', gap='xxlarge')
+    c1, c2 = st.columns([2, 1], vertical_alignment='center')
     with c1:
         header_dashboard()
     with c2:
-        if st.button("Go back to Home", type='secondary', key='loginbackbtn', shortcut="control+backspace"):
+        if st.button("← Back to Home", type='secondary', key='loginbackbtn', use_container_width=True):
             st.session_state['login_type'] = None
             st.query_params.clear()
             st.rerun()
 
-    st.header('Login using FaceID', text_alignment='center')
-    st.space()
-    st.space()
+    st.markdown("""
+        <div style="background: white; border: 1px solid #e2e8f0; border-radius: 18px; padding: 2rem; box-shadow: 0 4px 16px rgba(0,0,0,0.04); margin-top: 1rem;">
+            <h2 style="color: #1e293b; font-size: 1.5rem; text-align: center; margin-bottom: 0.4rem;">Student FaceID Login</h2>
+            <p style="color: #64748b; font-size: 0.9rem; text-align: center; margin-bottom: 1.5rem;">Position your face in front of the camera to verify your identity.</p>
+    """, unsafe_allow_html=True)
 
     show_registration = False
     photo_source = st.camera_input("Position your face in the center")
@@ -260,7 +265,7 @@ def student_screen():
     if photo_source:
         img_rgb = Image.open(photo_source).convert('RGB')
 
-        with st.spinner('AI is scanning..'):
+        with st.spinner('AI is scanning...'):
             encodings = get_face_embeddings(img_rgb)
             num_faces = len(encodings)
 
@@ -280,7 +285,7 @@ def student_screen():
                         st.session_state.is_logged_in = True
                         st.session_state.user_role = 'student'
                         st.session_state.student_data = student
-                        st.toast(f"Welcome Back {student['name']}")
+                        st.toast(f"Welcome Back {student['name']}!")
                         time.sleep(1)
                         st.rerun()
                 else:
@@ -289,21 +294,21 @@ def student_screen():
 
     if show_registration and photo_source:
         with st.container(border=True):
-            st.header('Register new Profile')
-            new_name = st.text_input("Enter your name", placeholder='E.g. Hamza Rizvi')
+            st.subheader('Register New Student Profile')
+            new_name = st.text_input("Full Name", placeholder='e.g. Akash Sharma')
 
-            st.subheader('Optional : Voice Enrollment')
-            st.info("Enroll for voice only attendance")
+            st.markdown("<div style='font-weight: 600; margin-top: 0.8rem;'>Optional: Voice Enrollment</div>", unsafe_allow_html=True)
+            st.caption("Record a short voice phrase for voice attendance verification.")
 
             audio_data = None
             try:
-                audio_data = st.audio_input('Record a short phrase like I am present, My name is Akash.')
+                audio_data = st.audio_input('Record phrase: "I am present in class"')
             except Exception:
-                st.error('Audio Data failed!')
+                pass
 
-            if st.button('Create Account', type='primary'):
-                if new_name:
-                    with st.spinner('Creating profile..'):
+            if st.button('✨ Complete Enrollment', type='primary', use_container_width=True):
+                if new_name and new_name.strip():
+                    with st.spinner('Registering biometric profile...'):
                         img_rgb = Image.open(photo_source).convert('RGB')
                         encodings = get_face_embeddings(img_rgb)
                         if encodings:
@@ -313,7 +318,7 @@ def student_screen():
                             if audio_data:
                                 voice_emb = get_voice_embedding(audio_data.read())
 
-                            response_data = create_student(new_name, face_embedding=face_emb, voice_embedding=voice_emb)
+                            response_data = create_student(new_name.strip(), face_embedding=face_emb, voice_embedding=voice_emb)
 
                             if response_data:
                                 train_classifier()
@@ -326,6 +331,7 @@ def student_screen():
                         else:
                             st.error("Couldn't capture your facial features for registration. Please retake the photo.")
                 else:
-                    st.warning('Please enter your name!')
+                    st.warning('Please enter your full name!')
 
+    st.markdown("</div>", unsafe_allow_html=True)
     footer_dashboard()

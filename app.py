@@ -45,25 +45,6 @@ def main():
         else:
             st.session_state["login_type"] = None
 
-    # Global Top Return-to-Home bar when user is inside Teacher or Student Portal
-    current_role = st.session_state.get("login_type")
-    if current_role in ["teacher", "student"]:
-        nav_col1, nav_col2, nav_col3 = st.columns([1.5, 3, 1.5], vertical_alignment="center")
-        with nav_col1:
-            if st.button("← Back to Home", type="secondary", key="global_nav_home_btn", use_container_width=True):
-                st.session_state["login_type"] = None
-                if "role" in st.query_params:
-                    del st.query_params["role"]
-                st.rerun()
-        with nav_col3:
-            other_role = "student" if current_role == "teacher" else "teacher"
-            other_label = "Switch to Student 🎓" if current_role == "teacher" else "Switch to Teacher 👨‍🏫"
-            if st.button(other_label, key="global_nav_switch_btn", use_container_width=True):
-                st.session_state["login_type"] = other_role
-                st.query_params["role"] = other_role
-                st.rerun()
-        st.markdown("<div style='margin-bottom: 1rem;'></div>", unsafe_allow_html=True)
-
     # Render Current Active Screen
     match st.session_state.get("login_type"):
         case "teacher":

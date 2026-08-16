@@ -1,9 +1,10 @@
-import streamlit as st
+import io
+import time
+import numpy as np
 import pandas as pd
 from datetime import datetime
-import time
 from PIL import Image
-import numpy as np
+import streamlit as st
 
 from src.ui.base_layout import style_background_dashboard, style_base_layout
 from src.components.header import header_dashboard
@@ -253,85 +254,132 @@ def student_screen():
             st.query_params.clear()
             st.rerun()
 
-    st.markdown("""
-        <div style="background: white; border: 1px solid #e2e8f0; border-radius: 18px; padding: 2rem; box-shadow: 0 4px 16px rgba(0,0,0,0.04); margin-top: 1rem;">
-            <h2 style="color: #1e293b; font-size: 1.5rem; text-align: center; margin-bottom: 0.4rem;">Student FaceID Login</h2>
-            <p style="color: #64748b; font-size: 0.9rem; text-align: center; margin-bottom: 1.5rem;">Position your face in front of the camera to verify your identity.</p>
-    """, unsafe_allow_html=True)
+    st.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
 
-    show_registration = False
-    photo_source = st.camera_input("Position your face in the center")
+    tab_login, tab_register = st.tabs([
+        "👤 FaceID Login (मौजूदा छात्र)",
+        "📝 Register New Student (नया छात्र पंजीकरण)",
+    ])
 
-    if photo_source:
-        img_rgb = Image.open(photo_source).convert('RGB')
+    # -------------------------------------------------------------------
+    # TAB 1: FaceID Login
+    # -------------------------------------------------------------------
+    with tab_login:
+        st.markdown("""
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 1.5rem;">
+                <h3 style="color: #1e293b; font-size: 1.3rem; margin-bottom: 0.3rem;">Student FaceID Login</h3>
+                <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1rem;">Take a snapshot facing the camera. If you are already enrolled, you will be logged in instantly.</p>
+        """, unsafe_allow_html=True)
 
-        with st.spinner('AI is scanning...'):
-            encodings = get_face_embeddings(img_rgb)
-            num_faces = len(encodings)
+        login_photo = st.camera_input("Position your face in the camera", key="student_camera_login")
 
-            if num_faces == 0:
-                st.warning('⚠️ Face not detected! Please ensure proper lighting and face the camera directly.')
-            elif num_faces > 1:
-                st.warning('⚠️ Multiple faces found! Please ensure only one person is in the frame.')
+        if login_photo is not None:
+            photo_bytes = login_photo.getvalue()
+            img_rgb = Image.open(io.BytesIO(photo_bytes)).convert('RGB')
+
+            with st.spinner('🔍 AI is scanning your face biometrics...'):
+                encodings = get_face_embeddings(img_rgb)
+                num_faces = len(encodings)
+
+                if num_faces == 0:
+                    st.warning('⚠️ Face not detected! Please ensure proper lighting and face the camera directly.')
+                elif num_faces > 1:
+                    st.warning('⚠️ Multiple faces detected! Please ensure only one student is in front of the camera.')
+                else:
+                    detected, all_ids, _ = predict_attendance(img_rgb)
+
+                    if detected:
+                        student_id = list(detected.keys())[0]
+                        all_students = get_all_students()
+                        student = next((s for s in all_students if s['student_id'] == student_id), None)
+
+                        if student:
+                            st.session_state.is_logged_in = True
+                            st.session_state.user_role = 'student'
+                            st.session_state.student_data = student
+                            st.toast(f"Welcome Back, {student['name']}! 👋")
+                            time.sleep(1)
+                            st.rerun()
+                    else:
+                        st.info("👤 **Face not recognized!** You might be a new student. Please switch to the **'📝 Register New Student'** tab above to register your profile.")
+
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # -------------------------------------------------------------------
+    # TAB 2: Register New Student
+    # -------------------------------------------------------------------
+    with tab_register:
+        st.markdown("""
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 1.5rem;">
+                <h3 style="color: #1e293b; font-size: 1.3rem; margin-bottom: 0.3rem;">New Student Biometric Registration</h3>
+                <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.2rem;">Enter your full name and take a clear facial snapshot to register your AI attendance profile.</p>
+        """, unsafe_allow_html=True)
+
+        new_student_name = st.text_input("Full Name *", placeholder="e.g. Rahul Sharma", key="reg_student_name")
+
+        st.markdown("<div style='font-weight: 600; color: #1e293b; margin-top: 1rem; margin-bottom: 0.3rem;'>📸 Face Biometric Snapshot *</div>", unsafe_allow_html=True)
+        reg_photo = st.camera_input("Capture facial snapshot for attendance", key="reg_camera_input")
+
+        st.markdown("<div style='font-weight: 600; color: #1e293b; margin-top: 1.2rem; margin-bottom: 0.3rem;'>🎙️ Voice Signature (Optional)</div>", unsafe_allow_html=True)
+        st.caption('Speak: "I am present in class" to enable Voice Attendance identification.')
+
+        reg_audio = None
+        try:
+            reg_audio = st.audio_input("Record voice sample", key="reg_audio_input")
+        except Exception:
+            pass
+
+        st.markdown("<div style='height: 0.8rem;'></div>", unsafe_allow_html=True)
+
+        if st.button("✨ Complete Biometric Registration", type="primary", use_container_width=True, key="btn_complete_registration"):
+            if not new_student_name or not new_student_name.strip():
+                st.error("❌ Please enter your **Full Name**.")
+            elif reg_photo is None:
+                st.error("❌ Please take a **Face Biometric Snapshot** using the camera above.")
             else:
-                detected, all_ids, _ = predict_attendance(img_rgb)
+                with st.spinner("🧠 Processing facial landmarks & generating biometric embedding..."):
+                    photo_bytes = reg_photo.getvalue()
+                    img_rgb = Image.open(io.BytesIO(photo_bytes)).convert('RGB')
+                    encodings = get_face_embeddings(img_rgb)
 
-                if detected:
-                    student_id = list(detected.keys())[0]
-                    all_students = get_all_students()
-                    student = next((s for s in all_students if s['student_id'] == student_id), None)
+                    if len(encodings) == 0:
+                        st.error("⚠️ **No face detected in snapshot!** Please face the camera directly under good lighting and retake the photo.")
+                    elif len(encodings) > 1:
+                        st.error("⚠️ **Multiple faces detected!** Please ensure only YOU are in the camera frame.")
+                    else:
+                        face_emb_list = [float(x) for x in encodings[0]]
 
-                    if student:
-                        st.session_state.is_logged_in = True
-                        st.session_state.user_role = 'student'
-                        st.session_state.student_data = student
-                        st.toast(f"Welcome Back {student['name']}!")
-                        time.sleep(1)
-                        st.rerun()
-                else:
-                    st.info('👤 Face not recognized! You might be a new student. Please register below.')
-                    show_registration = True
+                        voice_emb_list = None
+                        if reg_audio is not None:
+                            try:
+                                audio_bytes = reg_audio.getvalue() if hasattr(reg_audio, "getvalue") else reg_audio.read()
+                                v_emb = get_voice_embedding(audio_bytes)
+                                if v_emb is not None:
+                                    voice_emb_list = [float(x) for x in v_emb]
+                            except Exception as ve:
+                                print(f"Voice embedding notice: {ve}")
 
-    if show_registration and photo_source:
-        with st.container(border=True):
-            st.subheader('Register New Student Profile')
-            new_name = st.text_input("Full Name", placeholder='e.g. Akash Sharma')
+                        # Insert into Supabase
+                        created_records = create_student(
+                            new_name=new_student_name.strip(),
+                            face_embedding=face_emb_list,
+                            voice_embedding=voice_emb_list,
+                        )
 
-            st.markdown("<div style='font-weight: 600; margin-top: 0.8rem;'>Optional: Voice Enrollment</div>", unsafe_allow_html=True)
-            st.caption("Record a short voice phrase for voice attendance verification.")
+                        if created_records:
+                            new_student = created_records[0]
+                            train_classifier()
 
-            audio_data = None
-            try:
-                audio_data = st.audio_input('Record phrase: "I am present in class"')
-            except Exception:
-                pass
+                            st.session_state.is_logged_in = True
+                            st.session_state.user_role = 'student'
+                            st.session_state.student_data = new_student
 
-            if st.button('✨ Complete Enrollment', type='primary', use_container_width=True):
-                if new_name and new_name.strip():
-                    with st.spinner('Registering biometric profile...'):
-                        img_rgb = Image.open(photo_source).convert('RGB')
-                        encodings = get_face_embeddings(img_rgb)
-                        if encodings:
-                            face_emb = encodings[0].tolist()
-
-                            voice_emb = None
-                            if audio_data:
-                                voice_emb = get_voice_embedding(audio_data.read())
-
-                            response_data = create_student(new_name.strip(), face_embedding=face_emb, voice_embedding=voice_emb)
-
-                            if response_data:
-                                train_classifier()
-                                st.session_state.is_logged_in = True
-                                st.session_state.user_role = 'student'
-                                st.session_state.student_data = response_data[0]
-                                st.toast(f'Profile Created! Hi {new_name}!')
-                                time.sleep(1)
-                                st.rerun()
+                            st.success(f"🎉 **Registration Successful! Welcome, {new_student_name.strip()}!**")
+                            time.sleep(1.2)
+                            st.rerun()
                         else:
-                            st.error("Couldn't capture your facial features for registration. Please retake the photo.")
-                else:
-                    st.warning('Please enter your full name!')
+                            st.error("⚠️ Database connection error while saving profile. Please try again.")
 
-    st.markdown("</div>", unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
     footer_dashboard()

@@ -171,7 +171,7 @@ def teacher_tab_take_attendance():
                             "Name": student['name'],
                             "ID": student['student_id'],
                             "Source": ", ".join(sources) if is_present else "-",
-                            "Status": "âœ… Present" if is_present else "âŒ Absent"
+                            "Status": "✅ Present" if is_present else "❌ Absent"
                         })
 
                         attendance_to_log.append({
@@ -213,8 +213,8 @@ def teacher_tab_manage_subjects():
     if subjects:
         for sub in subjects:
             stats = [
-                ("ðŸ«‚", "Students", sub['total_students']),
-                ("ðŸ•°ï¸", "Classes", sub['total_classes']),
+                ("🫂", "Students", sub['total_students']),
+                ("🕰️", "Classes", sub['total_classes']),
             ]
 
             def make_share_btn(s_name=sub['name'], s_code=sub['subject_code']):
@@ -271,7 +271,7 @@ def teacher_tab_attendance_records():
     )
 
     summary['Attendance Stats'] = (
-        "âœ… " + summary['Present_Count'].astype(str) + " /"
+        "✅ " + summary['Present_Count'].astype(str) + " /"
         + summary['Total_Count'].astype(str) + ' Students'
     )
 
@@ -303,7 +303,6 @@ def teacher_screen_login():
     with c2:
         if st.button("Go back to Home", type='secondary', key='loginbackbtn', shortcut="control+backspace"):
             st.session_state['login_type'] = None
-            st.query_params.clear()
             st.rerun()
 
     st.header('Login using password', text_alignment='center')
@@ -322,7 +321,7 @@ def teacher_screen_login():
     with btnc1:
         if st.button('Login', icon=':material/passkey:', shortcut='control+enter', width='stretch'):
             if login_teacher(teacher_username, teacher_pass):
-                st.toast("welcome back!", icon="ðŸ‘‹")
+                st.toast("welcome back!", icon="👋")
                 import time
                 time.sleep(1)
                 st.rerun()
@@ -359,7 +358,6 @@ def teacher_screen_register():
     with c2:
         if st.button("Go back to Home", type='secondary', key='loginbackbtn', shortcut="control+backspace"):
             st.session_state['login_type'] = None
-            st.query_params.clear()
             st.rerun()
 
 

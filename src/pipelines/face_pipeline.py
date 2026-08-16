@@ -11,6 +11,7 @@ except ImportError:
     cv2 = None
 
 import io
+import json
 import numpy as np
 from PIL import Image
 import streamlit as st
@@ -99,7 +100,6 @@ def _non_max_suppression_rects(rects, iou_thresh=0.35):
     if not rects:
         return []
 
-    # Sort by area (larger bounding boxes first)
     sorted_rects = sorted(rects, key=lambda r: r.width() * r.height(), reverse=True)
     kept = []
 
@@ -130,9 +130,7 @@ def get_face_embeddings(image_input):
 
         h_img, w_img = image_np.shape[:2]
 
-        # ----------------------------------------------------
         # Mode A: dlib Deep ResNet Multi-Scale Detection
-        # ----------------------------------------------------
         if detector and sp and facerec:
             all_raw_faces = []
 
@@ -145,8 +143,7 @@ def get_face_embeddings(image_input):
             all_raw_faces.extend(faces_scale0)
 
             # 3. Scale 2: Upsampled detection for background/smaller student faces in group photos
-            # (Limit scale 2 to images <= 2000px on longest side to preserve memory)
-            if max(h_img, w_img) <= 2000:
+            if max(h_img, w_img) <= 2200:
                 faces_scale2 = list(detector(image_np, 2))
                 all_raw_faces.extend(faces_scale2)
 
@@ -154,7 +151,7 @@ def get_face_embeddings(image_input):
             if face_cascade is not None and cv2 is not None:
                 gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
                 gray_eq = cv2.equalizeHist(gray)
-                cv_faces = face_cascade.detectMultiScale(gray_eq, scaleFactor=1.1, minNeighbors=3, minSize=(30, 30))
+                cv_faces = face_cascade.detectMultiScale(gray_eq, scaleFactor=1.08, minNeighbors=3, minSize=(25, 25))
                 for (x, y, w, h) in cv_faces:
                     l = max(0, int(x))
                     t = max(0, int(y))
@@ -170,7 +167,6 @@ def get_face_embeddings(image_input):
             encodings = []
             for face in distinct_faces:
                 try:
-                    # Clip bounding box inside image boundaries
                     l = max(0, face.left())
                     t = max(0, face.top())
                     r = min(w_img, face.right())
@@ -186,9 +182,7 @@ def get_face_embeddings(image_input):
 
             return encodings
 
-        # ----------------------------------------------------
         # Mode B: OpenCV Fast Multi-Scale Pipeline
-        # ----------------------------------------------------
         if face_cascade is not None and cv2 is not None:
             gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
             gray_eq = cv2.equalizeHist(gray)
@@ -216,6 +210,23 @@ def get_face_embeddings(image_input):
         return []
 
 
+def _parse_embedding(raw_embedding):
+    """Safely parses embedding from DB whether stored as list, json string, or ndarray."""
+    if raw_embedding is None:
+        return None
+    if isinstance(raw_embedding, str):
+        try:
+            raw_embedding = json.loads(raw_embedding)
+        except Exception:
+            return None
+    if isinstance(raw_embedding, (list, tuple, np.ndarray)) and len(raw_embedding) == 128:
+        try:
+            return np.array(raw_embedding, dtype=np.float64)
+        except Exception:
+            return None
+    return None
+
+
 @st.cache_resource
 def get_trained_model():
     """Loads enrolled students and their 128-d facial embeddings from Supabase."""
@@ -225,9 +236,9 @@ def get_trained_model():
 
     enrolled = []
     for student in student_db:
-        embedding = student.get('face_embedding')
-        if embedding and isinstance(embedding, list) and len(embedding) == 128:
-            enrolled.append((student.get('student_id'), np.array(embedding, dtype=np.float64), student.get('name', '')))
+        emb_arr = _parse_embedding(student.get('face_embedding'))
+        if emb_arr is not None:
+            enrolled.append((student.get('student_id'), emb_arr, student.get('name', '')))
 
     if not enrolled:
         return None
@@ -256,18 +267,21 @@ def predict_attendance(class_image_np):
 
     enrolled_students = []
     for student in student_db:
-        embedding = student.get('face_embedding')
-        if embedding and isinstance(embedding, list) and len(embedding) == 128:
-            enrolled_students.append((student.get('student_id'), np.array(embedding, dtype=np.float64), student.get('name', '')))
+        emb_arr = _parse_embedding(student.get('face_embedding'))
+        if emb_arr is not None:
+            enrolled_students.append((student.get('student_id'), emb_arr, student.get('name', '')))
 
     all_enrolled_ids = [s[0] for s in enrolled_students]
     if not enrolled_students:
         return detected_students, [], len(encodings)
 
-    # 0.62 Euclidean distance threshold reliably matches faces while avoiding false positives
+    # 0.62 Euclidean distance threshold reliably matches faces in group photos
     resemblance_threshold = 0.62
 
     for encoding in encodings:
+        if encoding.shape[0] != 128:
+            continue
+
         best_match_id = None
         best_distance = float('inf')
 

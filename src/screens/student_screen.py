@@ -1,4 +1,5 @@
 import io
+import json
 import time
 import numpy as np
 import pandas as pd
@@ -9,7 +10,7 @@ import streamlit as st
 from src.ui.base_layout import style_background_dashboard, style_base_layout
 from src.components.header import header_dashboard
 from src.components.footer import footer_dashboard
-from src.pipelines.face_pipeline import predict_attendance, get_face_embeddings, train_classifier
+from src.pipelines.face_pipeline import predict_attendance, get_face_embeddings, train_classifier, _parse_embedding
 from src.pipelines.voice_pipeline import get_voice_embedding
 from src.database.db import (
     get_all_students,
@@ -17,9 +18,42 @@ from src.database.db import (
     get_student_subjects,
     get_student_attendance,
     unenroll_student_to_subject,
+    create_attendance,
 )
 from src.components.dialog_enroll import enroll_dialog
 from src.components.subject_card import subject_card
+
+
+def mark_student_attendance_for_today(student_id, subjects=None):
+    """Automatically records is_present=True attendance for the student's enrolled courses today."""
+    if not subjects:
+        subjects = get_student_subjects(student_id)
+    if not subjects:
+        return 0
+
+    now_iso = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    existing_logs = get_student_attendance(student_id)
+    already_marked_subjects = set(
+        log['subject_id'] for log in existing_logs 
+        if log.get('timestamp', '').startswith(today_str) and log.get('is_present')
+    )
+
+    new_logs = []
+    for sub_node in subjects:
+        sub = sub_node.get('subjects')
+        if sub and sub['subject_id'] not in already_marked_subjects:
+            new_logs.append({
+                'student_id': student_id,
+                'subject_id': sub['subject_id'],
+                'timestamp': now_iso,
+                'is_present': True
+            })
+
+    if new_logs:
+        create_attendance(new_logs)
+        return len(new_logs)
+    return 0
 
 
 def render_today_attendance_card(item):
@@ -68,12 +102,33 @@ def student_dashboard():
                     del st.session_state.student_data
                 st.rerun()
 
-    st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
 
     # Load student data
     with st.spinner('Loading attendance records...'):
         subjects = get_student_subjects(student_id)
         logs = get_student_attendance(student_id)
+
+    # Quick Self-Attendance Check-In Card
+    checkin_c1, checkin_c2 = st.columns([2.5, 1.5], vertical_alignment="center")
+    with checkin_c1:
+        st.markdown("""
+            <div style="background: linear-gradient(135deg, rgba(88, 101, 242, 0.08) 0%, rgba(235, 69, 158, 0.08) 100%); border: 1px solid rgba(88, 101, 242, 0.2); border-radius: 14px; padding: 12px 18px;">
+                <div style="font-weight: 700; color: #1e293b; font-size: 0.95rem;">⚡ Self Attendance Check-In</div>
+                <div style="color: #64748b; font-size: 0.85rem;">Click check-in to confirm your presence for today's classes:</div>
+            </div>
+        """, unsafe_allow_html=True)
+    with checkin_c2:
+        if st.button("✅ Check In for Today", type="primary", use_container_width=True, key="btn_self_checkin"):
+            marked = mark_student_attendance_for_today(student_id, subjects)
+            if marked > 0:
+                st.toast(f"✅ Marked present for {marked} subject(s) today!", icon="🎉")
+                time.sleep(1)
+                st.rerun()
+            else:
+                st.info("ℹ️ You are already marked present for all enrolled subjects today!")
+
+    st.markdown("<div style='height: 0.8rem;'></div>", unsafe_allow_html=True)
 
     # Date calculations
     today_dt = datetime.now()
@@ -175,7 +230,7 @@ def student_dashboard():
                 ])
                 st.dataframe(df_today, hide_index=True, use_container_width=True)
         else:
-            st.info(f"ℹ️ **No attendance marked for today yet ({today_display}).**\n\nWhen your teacher takes attendance in class, your status (**Present** / **Absent**) will appear here automatically.")
+            st.info(f"ℹ️ **No attendance marked for today yet ({today_display}).**\n\nClick **'✅ Check In for Today'** above or have your teacher take attendance in class to mark your presence.")
 
     # TAB 2: ENROLLED SUBJECTS
     with tab_subjects:
@@ -257,18 +312,18 @@ def student_screen():
     st.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
 
     tab_login, tab_register = st.tabs([
-        "👤 FaceID Login (मौजूदा छात्र)",
+        "👤 FaceID Login & Auto-Attendance (लॉगिन एवं हाज़िरी)",
         "📝 Register New Student (नया छात्र पंजीकरण)",
     ])
 
     # -------------------------------------------------------------------
-    # TAB 1: FaceID Login
+    # TAB 1: FaceID Login & Auto Attendance
     # -------------------------------------------------------------------
     with tab_login:
         st.markdown("""
             <div style="background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 1.5rem;">
-                <h3 style="color: #1e293b; font-size: 1.3rem; margin-bottom: 0.3rem;">Student FaceID Login</h3>
-                <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1rem;">Take a snapshot facing the camera. If you are already enrolled, you will be logged in instantly.</p>
+                <h3 style="color: #1e293b; font-size: 1.3rem; margin-bottom: 0.3rem;">Student FaceID Login & Check-In</h3>
+                <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1rem;">Take a snapshot facing the camera. Your identity will be verified, your attendance recorded for today's classes, and you'll be logged into your dashboard.</p>
         """, unsafe_allow_html=True)
 
         login_photo = st.camera_input("Position your face in the camera", key="student_camera_login")
@@ -277,7 +332,7 @@ def student_screen():
             photo_bytes = login_photo.getvalue()
             img_rgb = Image.open(io.BytesIO(photo_bytes)).convert('RGB')
 
-            with st.spinner('🔍 AI is scanning your face biometrics...'):
+            with st.spinner('🔍 AI is verifying face biometrics & logging attendance...'):
                 encodings = get_face_embeddings(img_rgb)
                 num_faces = len(encodings)
 
@@ -297,6 +352,12 @@ def student_screen():
                             st.session_state.is_logged_in = True
                             st.session_state.user_role = 'student'
                             st.session_state.student_data = student
+
+                            # Auto record attendance for today upon FaceID login
+                            marked_count = mark_student_attendance_for_today(student_id)
+
+                            if marked_count > 0:
+                                st.toast(f"✅ Attendance recorded for {marked_count} subject(s) today!", icon="🎉")
                             st.toast(f"Welcome Back, {student['name']}! 👋")
                             time.sleep(1)
                             st.rerun()
@@ -306,13 +367,13 @@ def student_screen():
         st.markdown("</div>", unsafe_allow_html=True)
 
     # -------------------------------------------------------------------
-    # TAB 2: Register New Student
+    # TAB 2: Register New Student (With Duplicate Prevention)
     # -------------------------------------------------------------------
     with tab_register:
         st.markdown("""
             <div style="background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 1.5rem;">
                 <h3 style="color: #1e293b; font-size: 1.3rem; margin-bottom: 0.3rem;">New Student Biometric Registration</h3>
-                <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.2rem;">Enter your full name and take a clear facial snapshot to register your AI attendance profile.</p>
+                <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.2rem;">Enter your full name and take a facial snapshot. <b>Note:</b> Each student can only register once.</p>
         """, unsafe_allow_html=True)
 
         new_student_name = st.text_input("Full Name *", placeholder="e.g. Rahul Sharma", key="reg_student_name")
@@ -337,7 +398,7 @@ def student_screen():
             elif reg_photo is None:
                 st.error("❌ Please take a **Face Biometric Snapshot** using the camera above.")
             else:
-                with st.spinner("🧠 Processing facial landmarks & generating biometric embedding..."):
+                with st.spinner("🧠 Analyzing facial biometrics & checking for duplicate profiles..."):
                     photo_bytes = reg_photo.getvalue()
                     img_rgb = Image.open(io.BytesIO(photo_bytes)).convert('RGB')
                     encodings = get_face_embeddings(img_rgb)
@@ -348,7 +409,37 @@ def student_screen():
                         st.error("⚠️ **Multiple faces detected!** Please ensure only YOU are in the camera frame.")
                     else:
                         face_emb_list = [float(x) for x in encodings[0]]
+                        new_emb_arr = np.array(face_emb_list, dtype=np.float64)
 
+                        all_existing_students = get_all_students()
+                        clean_name = new_student_name.strip()
+
+                        # 1. DUPLICATE CHECK: By Name
+                        existing_by_name = next(
+                            (s for s in all_existing_students if s.get('name', '').strip().lower() == clean_name.lower()),
+                            None
+                        )
+                        if existing_by_name:
+                            st.error(f"❌ **Duplicate Registration!** A student with the name **'{clean_name}'** is already registered (Student ID: #{existing_by_name['student_id']}).")
+                            st.info("💡 You cannot register again. Please switch to the **'👤 FaceID Login'** tab to log in.")
+                            return
+
+                        # 2. DUPLICATE CHECK: By Facial Biometrics
+                        duplicate_biometric_student = None
+                        for s in all_existing_students:
+                            existing_emb_arr = _parse_embedding(s.get('face_embedding'))
+                            if existing_emb_arr is not None:
+                                dist = float(np.linalg.norm(existing_emb_arr - new_emb_arr))
+                                if dist <= 0.58: # Same person
+                                    duplicate_biometric_student = s
+                                    break
+
+                        if duplicate_biometric_student:
+                            st.error(f"❌ **Duplicate Face Biometrics!** Your face is already registered in the system as **'{duplicate_biometric_student['name']}'** (Student ID: #{duplicate_biometric_student['student_id']}).")
+                            st.info("💡 Each student can only register once. Please use the **'👤 FaceID Login'** tab to log into your account.")
+                            return
+
+                        # Process optional voice embedding
                         voice_emb_list = None
                         if reg_audio is not None:
                             try:
@@ -359,9 +450,9 @@ def student_screen():
                             except Exception as ve:
                                 print(f"Voice embedding notice: {ve}")
 
-                        # Insert into Supabase
+                        # Insert new student into Supabase
                         created_records = create_student(
-                            new_name=new_student_name.strip(),
+                            new_name=clean_name,
                             face_embedding=face_emb_list,
                             voice_embedding=voice_emb_list,
                         )
@@ -374,7 +465,7 @@ def student_screen():
                             st.session_state.user_role = 'student'
                             st.session_state.student_data = new_student
 
-                            st.success(f"🎉 **Registration Successful! Welcome, {new_student_name.strip()}!**")
+                            st.success(f"🎉 **Registration Successful! Welcome, {clean_name}!**")
                             time.sleep(1.2)
                             st.rerun()
                         else:

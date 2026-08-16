@@ -4,7 +4,15 @@ from src.ui.base_layout import style_background_dashboard, style_base_layout
 from src.components.header import header_dashboard
 from src.components.footer import footer_dashboard
 from src.components.subject_card import subject_card
-from src.database.db import check_teacher_exists, create_teacher, teacher_login, get_teacher_subjects, get_attendance_for_teacher
+from src.database.db import (
+    check_teacher_exists,
+    create_teacher,
+    teacher_login,
+    get_teacher_subjects,
+    get_attendance_for_teacher,
+    get_all_students,
+    enroll_student_to_subject,
+)
 from src.components.dialog_create_subject import create_subject_dialog
 from src.components.dialog_share_subject import share_subject_dialog
 from src.components.dialog_add_photo import add_photos_dialog
@@ -84,7 +92,7 @@ def teacher_dashboard():
 
 def teacher_tab_take_attendance():
     teacher_id = st.session_state.teacher_data['teacher_id']
-    st.markdown("<h2 style='color: #1e293b; font-size: 1.6rem; margin-bottom: 1rem;'>Take AI Attendance</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color: #1e293b; font-size: 1.6rem; margin-bottom: 1rem;'>Take AI Attendance (Group & Single Scan)</h2>", unsafe_allow_html=True)
 
     if 'attendance_images' not in st.session_state:
         st.session_state.attendance_images = []
@@ -111,12 +119,12 @@ def teacher_tab_take_attendance():
     st.divider()
 
     if st.session_state.attendance_images:
-        st.markdown("<h3 style='color: #1e293b; font-size: 1.2rem; margin-bottom: 0.8rem;'>Added Classroom Photos</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color: #1e293b; font-size: 1.2rem; margin-bottom: 0.8rem;'>Classroom Group Photos Added</h3>", unsafe_allow_html=True)
         gallery_cols = st.columns(4)
 
         for idx, img in enumerate(st.session_state.attendance_images):
             with gallery_cols[idx % 4]:
-                st.image(img, use_container_width=True, caption=f'Photo {idx+1}')
+                st.image(img, use_container_width=True, caption=f'Classroom Photo {idx+1}')
 
     has_photos = bool(st.session_state.attendance_images)
     c1, c2, c3 = st.columns(3)
@@ -128,29 +136,52 @@ def teacher_tab_take_attendance():
 
     with c2:
         if st.button('⚡ Run Face Analysis', use_container_width=True, type='secondary', disabled=not has_photos):
-            with st.spinner('Deep scanning classroom photos...'):
+            with st.spinner('Deep scanning classroom group photos for all students...'):
                 all_detected_ids = {}
+                total_faces_detected_across_photos = 0
 
                 for idx, img in enumerate(st.session_state.attendance_images):
                     img_np = np.array(img.convert('RGB'))
-                    detected, _, _ = predict_attendance(img_np)
+                    detected, _, num_faces = predict_attendance(img_np)
+                    total_faces_detected_across_photos += num_faces
 
                     if detected:
                         for sid in detected.keys():
                             student_id = int(sid)
                             all_detected_ids.setdefault(student_id, []).append(f"Photo {idx+1}")
 
+                # 1. Fetch currently enrolled students in this subject
                 enrolled_res = supabase.table('subject_students').select("*, students(*)").eq('subject_id', selected_subject_id).execute()
-                enrolled_students = enrolled_res.data
+                enrolled_students = enrolled_res.data or []
 
-                if not enrolled_students:
-                    st.warning('No students enrolled in this course.')
+                # 2. Also check if any detected registered student is in this classroom but not in the subject roster yet
+                all_registered = get_all_students()
+                all_students_map = {s['student_id']: s for s in all_registered}
+                enrolled_sids = set(node['students']['student_id'] for node in enrolled_students if node.get('students'))
+
+                # Auto-enroll any detected student who is in class
+                for detected_sid in all_detected_ids.keys():
+                    if detected_sid not in enrolled_sids and detected_sid in all_students_map:
+                        try:
+                            enroll_student_to_subject(detected_sid, selected_subject_id)
+                            enrolled_sids.add(detected_sid)
+                        except Exception as ee:
+                            print(f"Auto-enroll notice: {ee}")
+
+                # Refresh enrolled students after auto-enrolling present students
+                enrolled_res = supabase.table('subject_students').select("*, students(*)").eq('subject_id', selected_subject_id).execute()
+                enrolled_students = enrolled_res.data or []
+
+                if not enrolled_students and not all_detected_ids:
+                    st.warning('No enrolled or registered students were found in the database. Please ensure students are registered.')
                 else:
                     results, attendance_to_log = [], []
                     current_timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
                     for node in enrolled_students:
-                        student = node['students']
+                        student = node.get('students')
+                        if not student:
+                            continue
                         sid_val = student['student_id']
                         sources = all_detected_ids.get(int(sid_val), []) or all_detected_ids.get(str(sid_val), [])
                         is_present = len(sources) > 0
@@ -158,7 +189,7 @@ def teacher_tab_take_attendance():
                         results.append({
                             "Name": student['name'],
                             "ID": student['student_id'],
-                            "Source": ", ".join(sources) if is_present else "-",
+                            "Source": ", ".join(sources) if is_present else "Not in Photo",
                             "Status": "✅ Present" if is_present else "❌ Absent"
                         })
 

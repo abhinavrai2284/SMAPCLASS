@@ -19,6 +19,7 @@ from src.database.db import (
     get_student_attendance,
     unenroll_student_to_subject,
     create_attendance,
+    parse_student_details,
 )
 from src.components.dialog_enroll import enroll_dialog
 from src.components.subject_card import subject_card
@@ -86,6 +87,9 @@ def render_today_attendance_card(item):
 def student_dashboard():
     student_data = st.session_state.student_data
     student_id = student_data['student_id']
+    parsed_info = parse_student_details(student_data)
+    display_name = parsed_info['name']
+    phone_num = parsed_info['phone_number']
 
     # Header and logout bar
     c1, c2 = st.columns([1.2, 1.8], vertical_alignment='center')
@@ -94,7 +98,9 @@ def student_dashboard():
     with c2:
         sub_c1, sub_c2 = st.columns([2, 1], vertical_alignment='center')
         with sub_c1:
-            st.markdown(f"<div style='font-size: 1.3rem; font-weight: 700; color: #1e293b;'>Welcome, {student_data['name']} 👋</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-size: 1.3rem; font-weight: 700; color: #1e293b;'>Welcome, {display_name} 👋</div>", unsafe_allow_html=True)
+            if phone_num and phone_num != "N/A":
+                st.caption(f"📱 Registered Mobile: **{phone_num}**")
         with sub_c2:
             if st.button("🚪 Logout", type='secondary', key='loginbackbtn', use_container_width=True):
                 st.session_state['is_logged_in'] = False
@@ -197,7 +203,15 @@ def student_dashboard():
     with m3:
         st.metric(label="❌ Today's Absent", value=f"{today_absent} Class{'es' if today_absent != 1 else ''}")
     with m4:
-        st.metric(label="📊 Overall Rate", value=f"{overall_pct}%")
+        st.metric(
+            label="📊 Overall Rate", 
+            value=f"{overall_pct}%",
+            delta="Eligible (>=75%)" if overall_pct >= 75.0 else "⚠️ Low Attendance (<75%)",
+            delta_color="normal" if overall_pct >= 75.0 else "inverse"
+        )
+
+    if total_classes > 0 and overall_pct < 75.0:
+        st.warning(f"⚠️ **Attendance Alert:** Your current overall attendance is **{overall_pct}%**, which is below the mandatory **75%** threshold. Please attend upcoming lectures regularly.")
 
     st.divider()
 
@@ -247,6 +261,7 @@ def student_dashboard():
                 sub = sub_node['subjects']
                 sid = sub['subject_id']
                 stats = stats_map.get(sid, {"total": 0, "attended": 0})
+                sub_pct = round(stats['attended'] / stats['total'] * 100, 1) if stats['total'] > 0 else 100.0
 
                 def make_unenroll_callback(s_id=sid, s_name=sub['name']):
                     def unenroll_button():
@@ -264,6 +279,7 @@ def student_dashboard():
                         stats=[
                             ('📅', 'Total', stats['total']),
                             ('✅', 'Attended', stats['attended']),
+                            ('📊', 'Rate', f"{sub_pct}%"),
                         ],
                         footer_callback=make_unenroll_callback(sid, sub['name']),
                     )
@@ -358,7 +374,7 @@ def student_screen():
 
                             if marked_count > 0:
                                 st.toast(f"✅ Attendance recorded for {marked_count} subject(s) today!", icon="🎉")
-                            st.toast(f"Welcome Back, {student['name']}! 👋")
+                            st.toast(f"Welcome Back, {student.get('clean_name', student.get('name'))}! 👋")
                             time.sleep(1)
                             st.rerun()
                     else:
@@ -367,16 +383,20 @@ def student_screen():
         st.markdown("</div>", unsafe_allow_html=True)
 
     # -------------------------------------------------------------------
-    # TAB 2: Register New Student (With Duplicate Prevention)
+    # TAB 2: Register New Student (With Duplicate & Phone Number Support)
     # -------------------------------------------------------------------
     with tab_register:
         st.markdown("""
             <div style="background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 1.5rem;">
                 <h3 style="color: #1e293b; font-size: 1.3rem; margin-bottom: 0.3rem;">New Student Biometric Registration</h3>
-                <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.2rem;">Enter your full name and take a facial snapshot. <b>Note:</b> Each student can only register once.</p>
+                <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.2rem;">Enter your full name, mobile number, and take a facial snapshot. <b>Note:</b> Each student can only register once.</p>
         """, unsafe_allow_html=True)
 
-        new_student_name = st.text_input("Full Name *", placeholder="e.g. Rahul Sharma", key="reg_student_name")
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            new_student_name = st.text_input("Full Name *", placeholder="e.g. Rahul Sharma", key="reg_student_name")
+        with col_f2:
+            new_student_phone = st.text_input("Mobile / WhatsApp Number * (for SMS Alerts)", placeholder="e.g. 9876543210 or +919876543210", key="reg_student_phone")
 
         st.markdown("<div style='font-weight: 600; color: #1e293b; margin-top: 1rem; margin-bottom: 0.3rem;'>📸 Face Biometric Snapshot *</div>", unsafe_allow_html=True)
         reg_photo = st.camera_input("Capture facial snapshot for attendance", key="reg_camera_input")
@@ -395,6 +415,8 @@ def student_screen():
         if st.button("✨ Complete Biometric Registration", type="primary", use_container_width=True, key="btn_complete_registration"):
             if not new_student_name or not new_student_name.strip():
                 st.error("❌ Please enter your **Full Name**.")
+            elif not new_student_phone or not new_student_phone.strip():
+                st.error("❌ Please enter your **Mobile / WhatsApp Number** for SMS attendance alerts.")
             elif reg_photo is None:
                 st.error("❌ Please take a **Face Biometric Snapshot** using the camera above.")
             else:
@@ -413,10 +435,11 @@ def student_screen():
 
                         all_existing_students = get_all_students()
                         clean_name = new_student_name.strip()
+                        clean_phone = new_student_phone.strip()
 
                         # 1. DUPLICATE CHECK: By Name
                         existing_by_name = next(
-                            (s for s in all_existing_students if s.get('name', '').strip().lower() == clean_name.lower()),
+                            (s for s in all_existing_students if (s.get('clean_name') or s.get('name', '')).strip().lower() == clean_name.lower()),
                             None
                         )
                         if existing_by_name:
@@ -435,7 +458,8 @@ def student_screen():
                                     break
 
                         if duplicate_biometric_student:
-                            st.error(f"❌ **Duplicate Face Biometrics!** Your face is already registered in the system as **'{duplicate_biometric_student['name']}'** (Student ID: #{duplicate_biometric_student['student_id']}).")
+                            existing_disp = duplicate_biometric_student.get('clean_name') or duplicate_biometric_student.get('name')
+                            st.error(f"❌ **Duplicate Face Biometrics!** Your face is already registered in the system as **'{existing_disp}'** (Student ID: #{duplicate_biometric_student['student_id']}).")
                             st.info("💡 Each student can only register once. Please use the **'👤 FaceID Login'** tab to log into your account.")
                             return
 
@@ -450,11 +474,12 @@ def student_screen():
                             except Exception as ve:
                                 print(f"Voice embedding notice: {ve}")
 
-                        # Insert new student into Supabase
+                        # Insert new student into Supabase with phone number
                         created_records = create_student(
                             new_name=clean_name,
                             face_embedding=face_emb_list,
                             voice_embedding=voice_emb_list,
+                            phone_number=clean_phone,
                         )
 
                         if created_records:

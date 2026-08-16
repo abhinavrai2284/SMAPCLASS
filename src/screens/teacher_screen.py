@@ -1,4 +1,8 @@
 import streamlit as st
+import numpy as np
+from datetime import datetime
+import pandas as pd
+import time
 
 from src.ui.base_layout import style_background_dashboard, style_base_layout
 from src.components.header import header_dashboard
@@ -12,17 +16,22 @@ from src.database.db import (
     get_attendance_for_teacher,
     get_all_students,
     enroll_student_to_subject,
+    get_defaulter_students_for_teacher,
+    parse_student_details,
 )
 from src.components.dialog_create_subject import create_subject_dialog
 from src.components.dialog_share_subject import share_subject_dialog
 from src.components.dialog_add_photo import add_photos_dialog
 from src.pipelines.face_pipeline import predict_attendance
 from src.components.dialog_attendance_results import attendance_result_dialog
-import numpy as np
-from datetime import datetime
-import pandas as pd
 from src.database.config import supabase
 from src.components.dialog_voice_attendance import voice_attendance_dialog
+from src.services.sms_service import (
+    format_attendance_warning_sms,
+    generate_sms_intent_url,
+    generate_whatsapp_intent_url,
+    send_sms_via_gateway,
+)
 
 
 def teacher_screen():
@@ -58,7 +67,12 @@ def teacher_dashboard():
     if "current_teacher_tab" not in st.session_state:
         st.session_state.current_teacher_tab = 'take_attendance'
 
-    tab1, tab2, tab3 = st.columns(3)
+    # Check defaulters count for tab badge
+    teacher_id = teacher_data['teacher_id']
+    defaulters_preview = get_defaulter_students_for_teacher(teacher_id, threshold=75.0)
+    defaulter_count = len(defaulters_preview)
+
+    tab1, tab2, tab3, tab4 = st.columns(4)
 
     with tab1:
         type1 = "primary" if st.session_state.current_teacher_tab == 'take_attendance' else "tertiary"
@@ -74,8 +88,15 @@ def teacher_dashboard():
 
     with tab3:
         type3 = "primary" if st.session_state.current_teacher_tab == 'attendance_records' else "tertiary"
-        if st.button('📊 Attendance Records', type=type3, use_container_width=True):
+        if st.button('📊 Records', type=type3, use_container_width=True):
             st.session_state.current_teacher_tab = 'attendance_records'
+            st.rerun()
+
+    with tab4:
+        type4 = "primary" if st.session_state.current_teacher_tab == 'low_attendance' else "tertiary"
+        tab4_label = f"⚠️ SMS Alert ({defaulter_count})" if defaulter_count > 0 else "⚠️ SMS Alert (<75%)"
+        if st.button(tab4_label, type=type4, use_container_width=True):
+            st.session_state.current_teacher_tab = 'low_attendance'
             st.rerun()
 
     st.divider()
@@ -86,6 +107,8 @@ def teacher_dashboard():
         teacher_tab_manage_subjects()
     elif st.session_state.current_teacher_tab == "attendance_records":
         teacher_tab_attendance_records()
+    elif st.session_state.current_teacher_tab == "low_attendance":
+        teacher_tab_low_attendance()
 
     footer_dashboard()
 
@@ -183,12 +206,14 @@ def teacher_tab_take_attendance():
                         if not student:
                             continue
                         sid_val = student['student_id']
+                        parsed = parse_student_details(student)
                         sources = all_detected_ids.get(int(sid_val), []) or all_detected_ids.get(str(sid_val), [])
                         is_present = len(sources) > 0
 
                         results.append({
-                            "Name": student['name'],
+                            "Name": parsed['name'],
                             "ID": student['student_id'],
+                            "Phone": parsed['phone_number'],
                             "Source": ", ".join(sources) if is_present else "Not in Photo",
                             "Status": "✅ Present" if is_present else "❌ Absent"
                         })
@@ -281,6 +306,108 @@ def teacher_tab_attendance_records():
                   [['Time', 'Subject', 'Subject Code', 'Attendance Stats']])
 
     st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+
+def teacher_tab_low_attendance():
+    """Defaulter List & Automated SMS Warning System for Students with Attendance < 75%."""
+    teacher_id = st.session_state.teacher_data['teacher_id']
+    st.markdown("<h2 style='color: #1e293b; font-size: 1.6rem; margin-bottom: 0.4rem;'>⚠️ Low Attendance Alerts & SMS Dispatch (< 75%)</h2>", unsafe_allow_html=True)
+    st.caption("Identify students whose attendance is below the mandatory 75% threshold and dispatch instant SMS attendance warnings.")
+
+    with st.spinner("Analyzing attendance percentages across your courses..."):
+        defaulters = get_defaulter_students_for_teacher(teacher_id, threshold=75.0)
+
+    if not defaulters:
+        st.markdown("""
+            <div style="background: #ecfdf5; border: 1.5px solid #a7f3d0; border-radius: 16px; padding: 1.8rem; text-align: center; margin: 1.5rem 0;">
+                <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🎉</div>
+                <div style="font-size: 1.25rem; font-weight: 700; color: #065f46; margin-bottom: 0.4rem;">Excellent! No Low Attendance Defaulters Found</div>
+                <div style="color: #047857; font-size: 0.92rem;">All enrolled students currently maintain an attendance rate of <b>75% or higher</b> in your subjects.</div>
+            </div>
+        """, unsafe_allow_html=True)
+        return
+
+    # Metrics Row
+    m1, m2, m3 = st.columns(3)
+    with m1:
+        st.metric(label="🚨 Defaulter Count (< 75%)", value=f"{len(defaulters)} Students", delta="Action Required", delta_color="inverse")
+    with m2:
+        avg_pct = round(sum(d['percentage'] for d in defaulters) / len(defaulters), 1)
+        st.metric(label="📉 Avg Defaulter Attendance", value=f"{avg_pct}%")
+    with m3:
+        st.metric(label="📋 Mandatory Threshold", value="75.0%")
+
+    st.markdown("<div style='height: 1rem;'></div>", unsafe_allow_html=True)
+
+    # Batch SMS Action Header
+    batch_c1, batch_c2 = st.columns([2.5, 1.5], vertical_alignment="center")
+    with batch_c1:
+        st.markdown(f"**Found {len(defaulters)} student(s) requiring immediate attendance warning:**")
+    with batch_c2:
+        if st.button("🚀 Send SMS to ALL Defaulters", type="primary", use_container_width=True, key="btn_send_all_sms"):
+            sent_count = 0
+            with st.spinner(f"Dispatching SMS alerts to {len(defaulters)} student(s)..."):
+                for d in defaulters:
+                    phone = d['phone_number']
+                    if phone and phone != "N/A":
+                        msg = format_attendance_warning_sms(
+                            d['name'], d['subject_name'], d['percentage'], d['attended_classes'], d['total_classes']
+                        )
+                        success, resp = send_sms_via_gateway(phone, msg)
+                        if success:
+                            sent_count += 1
+                st.toast(f"✅ Automated SMS warnings dispatched to {sent_count} student(s)!", icon="📲")
+                time.sleep(1.5)
+                st.rerun()
+
+    st.markdown("<div style='height: 0.5rem;'></div>", unsafe_allow_html=True)
+
+    # Defaulter Student Cards & Individual Actions
+    for idx, d in enumerate(defaulters):
+        st.markdown(f"""
+            <div style="background: white; border: 1.5px solid #fecaca; border-left: 6px solid #ef4444; border-radius: 14px; padding: 18px 22px; margin-bottom: 14px; box-shadow: 0 2px 6px rgba(239, 68, 68, 0.06);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <div style="font-size: 1.15rem; font-weight: 700; color: #1e293b;">{d['name']} <span style="font-size: 0.85rem; font-weight: 600; color: #64748b;">(ID: #{d['student_id']})</span></div>
+                        <div style="color: #475569; font-size: 0.9rem; margin-top: 4px;">
+                            📚 Subject: <b>{d['subject_name']} ({d['subject_code']})</b> &nbsp;•&nbsp; Section: <b>{d['section']}</b>
+                        </div>
+                        <div style="color: #64748b; font-size: 0.88rem; margin-top: 4px;">
+                            📱 Mobile: <span style="background: #f1f5f9; padding: 2px 8px; border-radius: 5px; font-weight: 600; color: #1e293b;">{d['phone_number']}</span>
+                            &nbsp;•&nbsp; 📊 Attended: <b>{d['attended_classes']} / {d['total_classes']} classes</b> ({d['missed_classes']} missed)
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 1.05rem; display: inline-block;">
+                            ⚠️ {d['percentage']}%
+                        </span>
+                    </div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        msg_body = format_attendance_warning_sms(
+            d['name'], d['subject_name'], d['percentage'], d['attended_classes'], d['total_classes']
+        )
+        sms_url = generate_sms_intent_url(d['phone_number'], msg_body)
+        wa_url = generate_whatsapp_intent_url(d['phone_number'], msg_body)
+
+        btn_c1, btn_c2, btn_c3 = st.columns([1.5, 1.5, 1.5])
+        with btn_c1:
+            if st.button(f"🚀 Send Direct SMS", key=f"btn_sms_{idx}_{d['student_id']}", use_container_width=True, type="secondary"):
+                if d['phone_number'] and d['phone_number'] != "N/A":
+                    success, resp = send_sms_via_gateway(d['phone_number'], msg_body)
+                    st.toast(f"✅ SMS sent to {d['name']} ({d['phone_number']})!", icon="📲")
+                else:
+                    st.error("❌ No phone number registered for this student.")
+
+        with btn_c2:
+            st.markdown(f'<a href="{wa_url}" target="_blank" style="text-decoration: none;"><button style="width: 100%; border-radius: 12px; background: #25D366; color: white; border: none; padding: 0.6rem 1rem; font-weight: 600; cursor: pointer;">💬 WhatsApp Alert</button></a>', unsafe_allow_html=True)
+
+        with btn_c3:
+            st.markdown(f'<a href="{sms_url}" style="text-decoration: none;"><button style="width: 100%; border-radius: 12px; background: #3b82f6; color: white; border: none; padding: 0.6rem 1rem; font-weight: 600; cursor: pointer;">📱 Open SMS App</button></a>', unsafe_allow_html=True)
+
+        st.markdown("<div style='height: 0.6rem;'></div>", unsafe_allow_html=True)
 
 
 def login_teacher(username, password):

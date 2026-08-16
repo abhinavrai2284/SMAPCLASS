@@ -121,6 +121,76 @@ def style_base_layout():
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         }
 
+        /* ---------------------------------------------------- */
+        /* FULL-SCREEN CAMERA & MOBILE PHOTO VIEWPORT ENHANCER  */
+        /* ---------------------------------------------------- */
+        div[data-testid="stCameraInput"] {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0.5rem auto !important;
+        }
+
+        div[data-testid="stCameraInput"] video,
+        div[data-testid="stCameraInput"] img {
+            width: 100% !important;
+            height: auto !important;
+            min-height: 380px !important;
+            max-height: 70vh !important;
+            object-fit: cover !important;
+            border-radius: 16px !important;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+        }
+
+        div[data-testid="stDialog"] > div[role="dialog"] {
+            width: 95vw !important;
+            max-width: 850px !important;
+            border-radius: 20px !important;
+        }
+
+        /* Mobile specific full-screen adjustments */
+        @media (max-width: 768px) {
+            .block-container {
+                padding-left: 0.8rem !important;
+                padding-right: 0.8rem !important;
+                padding-top: 0.8rem !important;
+            }
+
+            div[data-testid="stDialog"] > div[role="dialog"] {
+                width: 100vw !important;
+                max-width: 100vw !important;
+                min-height: 96vh !important;
+                height: 100vh !important;
+                border-radius: 0px !important;
+                margin: 0 !important;
+                padding: 1rem !important;
+            }
+
+            div[data-testid="stCameraInput"] video,
+            div[data-testid="stCameraInput"] img {
+                width: 100% !important;
+                min-height: 52vh !important;
+                max-height: 72vh !important;
+                object-fit: cover !important;
+                border-radius: 14px !important;
+            }
+
+            div[data-testid="stCameraInput"] button {
+                width: 100% !important;
+                min-height: 50px !important;
+                font-size: 1.05rem !important;
+                font-weight: 700 !important;
+                border-radius: 14px !important;
+                margin-top: 10px !important;
+            }
+
+            .stImage > img {
+                width: 100% !important;
+                max-height: 80vh !important;
+                object-fit: contain !important;
+                border-radius: 12px !important;
+            }
+        }
+
         /* Custom Scrollbar */
         ::-webkit-scrollbar {
             width: 8px;

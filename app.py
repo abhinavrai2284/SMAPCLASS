@@ -1,4 +1,3 @@
-
 import streamlit as st
 
 from src.database.config import supabase
@@ -10,40 +9,43 @@ from src.components.dialog_auto_enroll import auto_enroll_dialog
 
 def main():
     st.set_page_config(
-        page_title='SnapClass - Making Attendance faster using AI',
+        page_title='SMAPCLASS - AI Classroom Attendance & Intelligence',
         page_icon="https://i.ibb.co/YTYGn5qV/logo.png",
-        layout="centered"
+        layout="wide",
+        initial_sidebar_state="collapsed"
     )
 
     if supabase is None:
         st.error("⚠️ **Database Connection Error: Supabase credentials not found!**")
         st.info("""
-        Please configure your Supabase credentials in Streamlit Cloud Secrets:
-        1. Click on **Manage app** (in the bottom-right).
-        2. Go to **Settings (⚙️) > Secrets**.
-        3. Paste:
+        Please configure your Supabase credentials in Streamlit Cloud Secrets / .env:
         ```toml
         SUPABASE_URL = "https://lddkomsesyexjwdtskfh.supabase.co"
         SUPABASE_KEY = "sb_publishable_NDLEyZZYU6y574euWYlV3g_TcKzESSZ"
         ```
-        4. Click **Save**.
         """)
         return
+
+    # Handle direct URL query parameters (e.g. ?role=teacher or ?role=student)
+    role_param = st.query_params.get('role')
+    if role_param in ['teacher', 'student'] and 'login_type' not in st.session_state:
+        st.session_state['login_type'] = role_param
 
     if 'login_type' not in st.session_state:
         st.session_state['login_type'] = None
 
+    # Routing based on state
     match st.session_state['login_type']:
         case 'teacher':
             teacher_screen()
 
         case 'student':
             student_screen()
-        
+
         case None:
             home_screen()
 
-
+    # Join Code Auto-Enrollment
     join_code = st.query_params.get('join-code')
     if join_code:
         if st.session_state.login_type != 'student':
@@ -51,4 +53,6 @@ def main():
             st.rerun()
         if st.session_state.get('is_logged_in') and st.session_state.get('user_role') == 'student':
             auto_enroll_dialog(join_code)
-main()
+
+if __name__ == '__main__':
+    main()

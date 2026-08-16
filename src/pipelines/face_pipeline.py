@@ -1,5 +1,3 @@
-
-
 try:
     import dlib
     import face_recognition_models
@@ -22,20 +20,25 @@ from src.database.db import get_all_students
 
 @st.cache_resource
 def load_dlib_models():
-    if dlib is None or face_recognition_models is None:
-        return None, None, None, None
-
-    detector = dlib.get_frontal_face_detector()
-
-    sp = dlib.shape_predictor(
-        face_recognition_models.pose_predictor_model_location()
-    )
-
-    facerec = dlib.face_recognition_model_v1(
-        face_recognition_models.face_recognition_model_location()
-    )
-
+    """Loads dlib models if available, and OpenCV face cascade."""
+    detector = None
+    sp = None
+    facerec = None
     face_cascade = None
+
+    if dlib is not None and face_recognition_models is not None:
+        try:
+            detector = dlib.get_frontal_face_detector()
+            sp = dlib.shape_predictor(
+                face_recognition_models.pose_predictor_model_location()
+            )
+            facerec = dlib.face_recognition_model_v1(
+                face_recognition_models.face_recognition_model_location()
+            )
+        except Exception as e:
+            print(f"Notice: dlib models could not be loaded: {e}")
+            detector, sp, facerec = None, None, None
+
     if cv2 is not None:
         try:
             cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
@@ -70,52 +73,93 @@ def _preprocess_image(image_input):
     return image_input
 
 
+def _compute_opencv_embedding(face_crop):
+    """Computes a standardized 128-d vector embedding from a cropped face image."""
+    try:
+        resized = cv2.resize(face_crop, (64, 64))
+        gray = cv2.cvtColor(resized, cv2.COLOR_RGB2GRAY)
+        
+        # 1. 64-d Spatial block mean & std features
+        blocks_mean = [np.mean(gray[r:r+8, c:c+8]) for r in range(0, 64, 8) for c in range(0, 64, 8)]
+        # 2. 64-d Histogram features
+        hist, _ = np.histogram(gray, bins=64, range=(0, 256), density=True)
+        
+        combined = np.concatenate([blocks_mean, hist])
+        norm = np.linalg.norm(combined)
+        if norm > 0:
+            combined = combined / norm
+        return combined
+    except Exception as e:
+        print(f"Error computing cv2 embedding: {e}")
+        return np.zeros(128, dtype=np.float64)
+
+
 def get_face_embeddings(image_input):
     """Extract 128-d face descriptors for all faces found in image."""
     detector, sp, facerec, face_cascade = load_dlib_models()
-    if not detector or not sp or not facerec:
-        return []
 
     try:
         image_np = _preprocess_image(image_input)
         if image_np is None or not isinstance(image_np, np.ndarray) or image_np.size == 0:
             return []
 
-        # 1. Try standard dlib HOG detector (upsample 1, then 0, then 2)
-        faces = list(detector(image_np, 1))
-        if len(faces) == 0:
-            faces = list(detector(image_np, 0))
-        if len(faces) == 0:
-            faces = list(detector(image_np, 2))
+        # Mode A: dlib ResNet Pipeline (if dlib is installed)
+        if detector and sp and facerec:
+            faces = list(detector(image_np, 1))
+            if len(faces) == 0:
+                faces = list(detector(image_np, 0))
+            if len(faces) == 0:
+                faces = list(detector(image_np, 2))
 
-        # 2. Fallback: OpenCV Haar Cascade detector with histogram equalization
-        if len(faces) == 0 and face_cascade is not None and cv2 is not None:
+            # Fallback to Haar Cascade if dlib detector misses
+            if len(faces) == 0 and face_cascade is not None and cv2 is not None:
+                gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
+                gray_eq = cv2.equalizeHist(gray)
+                cv_faces = face_cascade.detectMultiScale(gray_eq, scaleFactor=1.08, minNeighbors=3, minSize=(30, 30))
+                h_img, w_img = image_np.shape[:2]
+                for (x, y, w, h) in cv_faces:
+                    l = max(0, int(x))
+                    t = max(0, int(y))
+                    r = min(w_img, int(x + w))
+                    b = min(h_img, int(y + h))
+                    if r > l and b > t:
+                        faces.append(dlib.rectangle(l, t, r, b))
+
+            encodings = []
+            for face in faces:
+                try:
+                    shape = sp(image_np, face)
+                    face_descriptor = facerec.compute_face_descriptor(image_np, shape, 1)
+                    encodings.append(np.array(face_descriptor, dtype=np.float64))
+                except Exception as fe:
+                    print(f"Error computing descriptor: {fe}")
+
+            if encodings:
+                return encodings
+
+        # Mode B: OpenCV Fast Pipeline (when dlib is not available on Cloud)
+        if face_cascade is not None and cv2 is not None:
             gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
-            # Equalize histogram for better detection in low/harsh lighting
             gray_eq = cv2.equalizeHist(gray)
-            cv_faces = face_cascade.detectMultiScale(gray_eq, scaleFactor=1.08, minNeighbors=3, minSize=(30, 30))
+            cv_faces = face_cascade.detectMultiScale(gray_eq, scaleFactor=1.1, minNeighbors=3, minSize=(30, 30))
             if len(cv_faces) == 0:
-                cv_faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(30, 30))
+                cv_faces = face_cascade.detectMultiScale(gray, scaleFactor=1.05, minNeighbors=2, minSize=(25, 25))
 
+            encodings = []
             h_img, w_img = image_np.shape[:2]
             for (x, y, w, h) in cv_faces:
-                l = max(0, int(x))
-                t = max(0, int(y))
-                r = min(w_img, int(x + w))
-                b = min(h_img, int(y + h))
-                if r > l and b > t:
-                    faces.append(dlib.rectangle(l, t, r, b))
+                pad_w, pad_h = int(w * 0.1), int(h * 0.1)
+                x1 = max(0, x - pad_w)
+                y1 = max(0, y - pad_h)
+                x2 = min(w_img, x + w + pad_w)
+                y2 = min(h_img, y + h + pad_h)
+                crop = image_np[y1:y2, x1:x2]
+                if crop.size > 0:
+                    emb = _compute_opencv_embedding(crop)
+                    encodings.append(emb)
+            return encodings
 
-        encodings = []
-        for face in faces:
-            try:
-                shape = sp(image_np, face)
-                face_descriptor = facerec.compute_face_descriptor(image_np, shape, 1)
-                encodings.append(np.array(face_descriptor, dtype=np.float64))
-            except Exception as fe:
-                print(f"Error computing descriptor for face: {fe}")
-
-        return encodings
+        return []
     except Exception as e:
         print(f"Error in get_face_embeddings: {e}")
         return []
@@ -163,7 +207,7 @@ def predict_attendance(class_image_np):
     if not enrolled_students:
         return detected_student, [], len(encodings)
 
-    resemblance_threshold = 0.65  # Accommodates webcam lighting & resolution differences reliably
+    resemblance_threshold = 0.65
 
     for encoding in encodings:
         best_match_id = None
@@ -179,4 +223,3 @@ def predict_attendance(class_image_np):
             detected_student[best_match_id] = True
 
     return detected_student, all_students, len(encodings)
-

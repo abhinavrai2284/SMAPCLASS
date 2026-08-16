@@ -1,5 +1,3 @@
-cmake
-libopenblas-dev
-liblapack-dev
 libsndfile1
 libgl1
+ffmpeg

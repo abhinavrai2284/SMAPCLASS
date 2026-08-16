@@ -26,6 +26,7 @@ def load_dlib_models():
     sp = None
     facerec = None
     face_cascade = None
+    face_cascade_alt = None
 
     if dlib is not None and face_recognition_models is not None:
         try:
@@ -49,7 +50,15 @@ def load_dlib_models():
         except Exception:
             face_cascade = None
 
-    return detector, sp, facerec, face_cascade
+        try:
+            cascade_alt_path = cv2.data.haarcascades + 'haarcascade_frontalface_alt2.xml'
+            face_cascade_alt = cv2.CascadeClassifier(cascade_alt_path)
+            if face_cascade_alt.empty():
+                face_cascade_alt = None
+        except Exception:
+            face_cascade_alt = None
+
+    return detector, sp, facerec, face_cascade, face_cascade_alt
 
 
 def _preprocess_image(image_input):
@@ -117,11 +126,12 @@ def _non_max_suppression_rects(rects, iou_thresh=0.35):
 
 def get_face_embeddings(image_input):
     """
-    Multi-Scale Deep Facial Descriptor Extractor.
-    Scans for ALL students in individual and group classroom photos across multiple scales.
+    Multi-Scale Adaptive Deep Facial Descriptor Extractor.
+    Applies CLAHE illumination enhancement and multi-scale scanning to detect ALL students
+    in classroom group photos (including shadowed, dim, and angled faces).
     Returns a list of 128-dimensional vector descriptors.
     """
-    detector, sp, facerec, face_cascade = load_dlib_models()
+    detector, sp, facerec, face_cascade, face_cascade_alt = load_dlib_models()
 
     try:
         image_np = _preprocess_image(image_input)
@@ -130,35 +140,47 @@ def get_face_embeddings(image_input):
 
         h_img, w_img = image_np.shape[:2]
 
-        # Mode A: dlib Deep ResNet Multi-Scale Detection
+        # Mode A: dlib Deep ResNet Multi-Scale Detection with CLAHE Illumination
         if detector and sp and facerec:
             all_raw_faces = []
 
-            # 1. Scale 1: Standard detection for foreground faces
+            # 1. Standard detection on original RGB
             faces_scale1 = list(detector(image_np, 1))
             all_raw_faces.extend(faces_scale1)
 
-            # 2. Scale 0: Fast downscaled detection for very large / close-up faces
             faces_scale0 = list(detector(image_np, 0))
             all_raw_faces.extend(faces_scale0)
 
-            # 3. Scale 2: Upsampled detection for background/smaller student faces in group photos
-            if max(h_img, w_img) <= 2200:
-                faces_scale2 = list(detector(image_np, 2))
-                all_raw_faces.extend(faces_scale2)
-
-            # 4. Fallback/Augmentation: OpenCV Haar Cascade for side angles or challenging lighting
-            if face_cascade is not None and cv2 is not None:
+            # 2. Illumination Equalization (CLAHE) to reveal faces in shadows or dim lighting
+            if cv2 is not None:
                 gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
-                gray_eq = cv2.equalizeHist(gray)
-                cv_faces = face_cascade.detectMultiScale(gray_eq, scaleFactor=1.08, minNeighbors=3, minSize=(25, 25))
-                for (x, y, w, h) in cv_faces:
-                    l = max(0, int(x))
-                    t = max(0, int(y))
-                    r = min(w_img, int(x + w))
-                    b = min(h_img, int(y + h))
-                    if r > l and b > t:
-                        all_raw_faces.append(dlib.rectangle(l, t, r, b))
+                clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
+                gray_clahe = clahe.apply(gray)
+                rgb_clahe = np.stack([gray_clahe] * 3, axis=-1)
+
+                # Scan illuminated image for shadowed / dim student faces
+                faces_clahe_1 = list(detector(rgb_clahe, 1))
+                all_raw_faces.extend(faces_clahe_1)
+
+                if max(h_img, w_img) <= 2200:
+                    faces_clahe_2 = list(detector(rgb_clahe, 2))
+                    all_raw_faces.extend(faces_clahe_2)
+
+                # 3. Augment with OpenCV Haar Cascades for side-angles and tilted heads
+                for casc in [face_cascade, face_cascade_alt]:
+                    if casc is not None:
+                        cv_faces = casc.detectMultiScale(gray_clahe, scaleFactor=1.08, minNeighbors=3, minSize=(25, 25))
+                        for (x, y, w, h) in cv_faces:
+                            l = max(0, int(x))
+                            t = max(0, int(y))
+                            r = min(w_img, int(x + w))
+                            b = min(h_img, int(y + h))
+                            if r > l and b > t:
+                                all_raw_faces.append(dlib.rectangle(l, t, r, b))
+            else:
+                if max(h_img, w_img) <= 2200:
+                    faces_scale2 = list(detector(image_np, 2))
+                    all_raw_faces.extend(faces_scale2)
 
             # Deduplicate overlapping detections on the same student
             distinct_faces = _non_max_suppression_rects(all_raw_faces, iou_thresh=0.35)
@@ -182,11 +204,14 @@ def get_face_embeddings(image_input):
 
             return encodings
 
-        # Mode B: OpenCV Fast Multi-Scale Pipeline
-        if face_cascade is not None and cv2 is not None:
+        # Mode B: OpenCV Fast Multi-Scale Pipeline (if dlib is not loaded)
+        if cv2 is not None and (face_cascade is not None or face_cascade_alt is not None):
             gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
-            gray_eq = cv2.equalizeHist(gray)
-            cv_faces = face_cascade.detectMultiScale(gray_eq, scaleFactor=1.08, minNeighbors=3, minSize=(25, 25))
+            clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
+            gray_eq = clahe.apply(gray)
+
+            casc = face_cascade or face_cascade_alt
+            cv_faces = casc.detectMultiScale(gray_eq, scaleFactor=1.08, minNeighbors=3, minSize=(25, 25))
 
             encodings = []
             for (x, y, w, h) in cv_faces:
@@ -275,8 +300,8 @@ def predict_attendance(class_image_np):
     if not enrolled_students:
         return detected_students, [], len(encodings)
 
-    # 0.62 Euclidean distance threshold reliably matches faces in group photos
-    resemblance_threshold = 0.62
+    # 0.68 threshold reliably matches faces in classroom group photos with shadows/angles
+    resemblance_threshold = 0.68
 
     for encoding in encodings:
         if encoding.shape[0] != 128:

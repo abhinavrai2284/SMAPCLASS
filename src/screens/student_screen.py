@@ -26,7 +26,7 @@ def render_today_attendance_card(item):
     status_bg = "#ecfdf5" if is_present else "#fef2f2"
     status_color = "#047857" if is_present else "#b91c1c"
     status_border = "#a7f3d0" if is_present else "#fecaca"
-    status_text = "✅ PRESENT" if is_present else "❌ ABSENT"
+    status_text = "âœ… PRESENT" if is_present else "âŒ ABSENT"
 
     html = f"""
     <div style="background: white; border: 1px solid #e2e8f0; border-left: 6px solid {'#10b981' if is_present else '#ef4444'}; border-radius: 14px; padding: 16px 20px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
@@ -34,8 +34,8 @@ def render_today_attendance_card(item):
             <div style="font-size: 1.15rem; font-weight: 700; color: #1e293b;">{item['subject_name']}</div>
             <div style="color: #64748b; font-size: 0.9rem; margin-top: 5px;">
                 <span style="background: #f1f5f9; padding: 3px 8px; border-radius: 6px; font-weight: 600; color: #475569;">Code: {item['subject_code']}</span>
-                &nbsp;•&nbsp; Section: <b>{item['section']}</b>
-                &nbsp;•&nbsp; 🕒 Time: <b>{item['time']}</b>
+                &nbsp;â€¢&nbsp; Section: <b>{item['section']}</b>
+                &nbsp;â€¢&nbsp; ðŸ•’ Time: <b>{item['time']}</b>
             </div>
         </div>
         <div>
@@ -57,7 +57,7 @@ def student_dashboard():
     with c1:
         header_dashboard()
     with c2:
-        st.subheader(f"Welcome, {student_data['name']} 👋")
+        st.subheader(f"Welcome, {student_data['name']} ðŸ‘‹")
         if st.button("Logout", type='secondary', key='loginbackbtn', shortcut="control+backspace", icon=":material/logout:"):
             st.session_state['is_logged_in'] = False
             del st.session_state.student_data
@@ -131,21 +131,21 @@ def student_dashboard():
 
     m1, m2, m3, m4 = st.columns(4)
     with m1:
-        st.metric(label="📅 Today", value=today_dt.strftime("%d %b %Y"))
+        st.metric(label="ðŸ“… Today", value=today_dt.strftime("%d %b %Y"))
     with m2:
-        st.metric(label="✅ Today's Present", value=f"{today_present} Class{'es' if today_present != 1 else ''}")
+        st.metric(label="âœ… Today's Present", value=f"{today_present} Class{'es' if today_present != 1 else ''}")
     with m3:
-        st.metric(label="❌ Today's Absent", value=f"{today_absent} Class{'es' if today_absent != 1 else ''}")
+        st.metric(label="âŒ Today's Absent", value=f"{today_absent} Class{'es' if today_absent != 1 else ''}")
     with m4:
-        st.metric(label="📊 Overall Rate", value=f"{overall_pct}%")
+        st.metric(label="ðŸ“Š Overall Rate", value=f"{overall_pct}%")
 
     st.divider()
 
     # Dashboard Tabs
     tab_today, tab_subjects, tab_history = st.tabs([
-        "📋 Today's Attendance (आज की हाज़िरी)",
-        "📚 Enrolled Subjects (दाखिल विषय)",
-        "📜 Full History (पूरा रिकॉर्ड)",
+        "ðŸ“‹ Today's Attendance (à¤†à¤œ à¤•à¥€ à¤¹à¤¾à¤œà¤¼à¤¿à¤°à¥€)",
+        "ðŸ“š Enrolled Subjects (à¤¦à¤¾à¤–à¤¿à¤² à¤µà¤¿à¤·à¤¯)",
+        "ðŸ“œ Full History (à¤ªà¥‚à¤°à¤¾ à¤°à¤¿à¤•à¥‰à¤°à¥à¤¡)",
     ])
 
     # TAB 1: TODAY'S ATTENDANCE LIST
@@ -158,20 +158,20 @@ def student_dashboard():
                 render_today_attendance_card(item)
 
             # Also provide a quick summary dataframe view option
-            with st.expander("📊 View as Table"):
+            with st.expander("ðŸ“Š View as Table"):
                 df_today = pd.DataFrame([
                     {
                         "Subject": item['subject_name'],
                         "Subject Code": item['subject_code'],
                         "Section": item['section'],
                         "Time": item['time'],
-                        "Status": "✅ Present" if item['is_present'] else "❌ Absent",
+                        "Status": "âœ… Present" if item['is_present'] else "âŒ Absent",
                     }
                     for item in today_logs
                 ])
                 st.dataframe(df_today, hide_index=True, width='stretch')
         else:
-            st.info(f"ℹ️ **No attendance marked for today yet ({today_display}).**\n\nWhen your teacher takes attendance in class, your status (**Present** / **Absent**) will appear here automatically.")
+            st.info(f"â„¹ï¸ **No attendance marked for today yet ({today_display}).**\n\nWhen your teacher takes attendance in class, your status (**Present** / **Absent**) will appear here automatically.")
 
     # TAB 2: ENROLLED SUBJECTS
     with tab_subjects:
@@ -203,8 +203,8 @@ def student_dashboard():
                         code=sub['subject_code'],
                         section=sub['section'],
                         stats=[
-                            ('📅', 'Total', stats['total']),
-                            ('✅', 'Attended', stats['attended']),
+                            ('ðŸ“…', 'Total', stats['total']),
+                            ('âœ…', 'Attended', stats['attended']),
                         ],
                         footer_callback=make_unenroll_callback(sid, sub['name']),
                     )
@@ -222,7 +222,7 @@ def student_dashboard():
                     "Subject": item['subject_name'],
                     "Subject Code": item['subject_code'],
                     "Section": item['section'],
-                    "Status": "✅ Present" if item['is_present'] else "❌ Absent",
+                    "Status": "âœ… Present" if item['is_present'] else "âŒ Absent",
                 }
                 for item in sorted(all_logs_formatted, key=lambda x: x['timestamp'], reverse=True)
             ])
@@ -264,9 +264,9 @@ def student_screen():
             num_faces = len(encodings)
 
             if num_faces == 0:
-                st.warning('⚠️ Face not detected! Please ensure proper lighting and face the camera directly.')
+                st.warning('âš ï¸ Face not detected! Please ensure proper lighting and face the camera directly.')
             elif num_faces > 1:
-                st.warning('⚠️ Multiple faces found! Please ensure only one person is in the frame.')
+                st.warning('âš ï¸ Multiple faces found! Please ensure only one person is in the frame.')
             else:
                 detected, all_ids, _ = predict_attendance(img_rgb)
 
@@ -283,7 +283,7 @@ def student_screen():
                         time.sleep(1)
                         st.rerun()
                 else:
-                    st.info('👤 Face not recognized! You might be a new student. Please register below.')
+                    st.info('ðŸ‘¤ Face not recognized! You might be a new student. Please register below.')
                     show_registration = True
 
     if show_registration and photo_source:

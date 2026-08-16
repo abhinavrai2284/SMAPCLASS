@@ -1,27 +1,27 @@
-# SNAPCLASS 📸🎙️
+﻿# SMAPCLASS ⚡🎓
 
-**SNAPCLASS** is an AI-powered smart attendance system built with Streamlit, Supabase, and cutting-edge biometric machine learning pipelines (Face Recognition with dlib/SVM and Voice Identification with Resemblyzer).
+**SMAPCLASS** is an AI-powered smart attendance and classroom management system built with Streamlit, Flask, Supabase, and cutting-edge biometric machine learning pipelines (Face Recognition with dlib/SVM and Voice Identification with Resemblyzer).
 
 ---
 
-## ✨ Features
+## 🌟 Key Features
 
-- **Dual-Role Portals**: Dedicated interfaces for Teachers and Students.
+- **Dual-Role Portals**: Dedicated interfaces for Teachers (Faculty) and Students.
 - **Biometric Student Login & Registration**: Face-based login and optional voice enrollment.
 - **Smart Teacher Attendance**:
   - **AI Classroom Photo Analysis**: Capture or batch-upload classroom photos to automatically detect and mark enrolled students present using 128-dimensional facial embedding vectors.
   - **AI Voice Attendance**: Analyze classroom audio recordings to identify speaking students via deep speaker embeddings.
 - **Subject Management & Sharing**: Create subjects, manage rosters, and generate QR code/join links for instant student enrollment.
+- **Integrated Frontend Landing Portal**: Modern, responsive landing page with quick join code input, role selection, and live backend health indicators located in `frontend/`.
 - **Historical Attendance Records**: Aggregated attendance logs with timestamps and summary metrics.
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠️ Architecture & Tech Stack
 
-- **Frontend**: [Streamlit](https://streamlit.io/) (v1.54+) with modern styling and responsive components.
-- **Database**: [Supabase](https://supabase.com/) (PostgreSQL & Auth).
-- **Face Recognition**: `dlib`, `face_recognition_models`, `scikit-learn` (SVC).
-- **Voice Recognition**: `resemblyzer`, `librosa`, `soundfile`.
+- **AI Attendance Backend**: [Streamlit](https://streamlit.io/) (v1.54+), `dlib`, `face_recognition_models`, `scikit-learn` (SVC), `resemblyzer`, `librosa`, `soundfile`.
+- **Frontend Portal**: [Flask](https://flask.palletsprojects.com/) in `frontend/`, responsive HTML5/CSS3.
+- **Database & Cloud**: [Supabase](https://supabase.com/) (PostgreSQL & Vector Storage).
 - **QR Code Generation**: `segno`.
 
 ---
@@ -34,33 +34,26 @@ git clone https://github.com/abhinavrai2284/SMAPCLASS.git
 cd SMAPCLASS
 ```
 
-### 2. Set up virtual environment
+### 2. Set up virtual environment & install dependencies
 ```bash
 # Windows
-python -m venv .venv
-.venv\Scripts\activate
-
-# Linux / macOS
-python3 -m venv .venv
-source .venv/bin/activate
-```
-
-### 3. Install dependencies
-```bash
+python -m venv venv
+.\venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 4. Configure Supabase Secrets
-Create `.streamlit/secrets.toml` in the root directory with your Supabase credentials:
-```toml
-SUPABASE_URL = "https://your-project.supabase.co"
-SUPABASE_KEY = "your-supabase-anon-or-service-role-key"
+### 3. Run the AI Attendance Backend (Streamlit)
+```bash
+streamlit run app.py --server.port 8501
 ```
 
-### 5. Run the application
+### 4. Run the Modern Frontend Landing Page (Flask)
 ```bash
-streamlit run app.py
+cd frontend
+pip install -r requirements.txt
+python app.py
 ```
+Open **http://localhost:5000** in your browser to access the landing page and launch the integrated portals!
 
 ---
 
@@ -72,11 +65,10 @@ streamlit run app.py
    - **Repository**: `abhinavrai2284/SMAPCLASS`
    - **Branch**: `main`
    - **Main file path**: `app.py`
-4. Expand **Advanced settings** -> **Secrets** and paste:
-   ```toml
-   SUPABASE_URL = "https://your-project.supabase.co"
-   SUPABASE_KEY = "your-supabase-anon-or-service-role-key"
-   ```
+4. Expand **Advanced settings** -> **Secrets** and configure `SUPABASE_URL` and `SUPABASE_KEY`.
 5. Click **Deploy!**
 
-> **Note**: `packages.txt` is pre-configured with Linux system packages (`cmake`, `libopenblas-dev`, `libsndfile1`, `ffmpeg`) needed for `dlib` and audio processing on Streamlit Cloud.
+---
+
+## 📄 License
+MIT License © 2026 Abhinav Rai

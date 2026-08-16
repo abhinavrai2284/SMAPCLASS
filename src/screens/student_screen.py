@@ -1,103 +1,246 @@
 import streamlit as st
-
-from src.ui.base_layout import style_background_dashboard, style_base_layout
-
-from src.components.header import header_dashboard
-from src.components.footer import footer_dashboard
+import pandas as pd
+from datetime import datetime
+import time
 from PIL import Image
 import numpy as np
+
+from src.ui.base_layout import style_background_dashboard, style_base_layout
+from src.components.header import header_dashboard
+from src.components.footer import footer_dashboard
 from src.pipelines.face_pipeline import predict_attendance, get_face_embeddings, train_classifier
 from src.pipelines.voice_pipeline import get_voice_embedding
-from src.database.db import get_all_students, create_student, get_student_subjects, get_student_attendance, unenroll_student_to_subject
-import time
-
+from src.database.db import (
+    get_all_students,
+    create_student,
+    get_student_subjects,
+    get_student_attendance,
+    unenroll_student_to_subject,
+)
 from src.components.dialog_enroll import enroll_dialog
 from src.components.subject_card import subject_card
+
+
+def render_today_attendance_card(item):
+    is_present = item['is_present']
+    status_bg = "#ecfdf5" if is_present else "#fef2f2"
+    status_color = "#047857" if is_present else "#b91c1c"
+    status_border = "#a7f3d0" if is_present else "#fecaca"
+    status_text = "✅ PRESENT" if is_present else "❌ ABSENT"
+
+    html = f"""
+    <div style="background: white; border: 1px solid #e2e8f0; border-left: 6px solid {'#10b981' if is_present else '#ef4444'}; border-radius: 14px; padding: 16px 20px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
+        <div>
+            <div style="font-size: 1.15rem; font-weight: 700; color: #1e293b;">{item['subject_name']}</div>
+            <div style="color: #64748b; font-size: 0.9rem; margin-top: 5px;">
+                <span style="background: #f1f5f9; padding: 3px 8px; border-radius: 6px; font-weight: 600; color: #475569;">Code: {item['subject_code']}</span>
+                &nbsp;•&nbsp; Section: <b>{item['section']}</b>
+                &nbsp;•&nbsp; 🕒 Time: <b>{item['time']}</b>
+            </div>
+        </div>
+        <div>
+            <span style="background: {status_bg}; color: {status_color}; border: 1px solid {status_border}; padding: 7px 16px; border-radius: 25px; font-weight: 700; font-size: 0.95rem; display: inline-block;">
+                {status_text}
+            </span>
+        </div>
+    </div>
+    """
+    st.markdown(html, unsafe_allow_html=True)
+
 
 def student_dashboard():
     student_data = st.session_state.student_data
     student_id = student_data['student_id']
+
+    # Header and logout bar
     c1, c2 = st.columns(2, vertical_alignment='center', gap='xxlarge')
     with c1:
         header_dashboard()
     with c2:
-        st.subheader(f"""Welcome, {student_data['name']} """)
-        if st.button("Logout", type='secondary', key='loginbackbtn', shortcut="control+backspace"):
+        st.subheader(f"Welcome, {student_data['name']} 👋")
+        if st.button("Logout", type='secondary', key='loginbackbtn', shortcut="control+backspace", icon=":material/logout:"):
             st.session_state['is_logged_in'] = False
-            del st.session_state.student_data 
+            del st.session_state.student_data
             st.rerun()
-
 
     st.space()
 
-    c1, c2 =st.columns(2)
-    with c1:
-        st.header('Your Enrolled Subjects')
-    with c2:
-        if st.button('Enroll in Subject', type='primary', width='stretch'):
-            enroll_dialog()
-
-
-    st.divider()
-
-
-    with st.spinner('Loading your enrolled subjects..'):
+    # Load student data
+    with st.spinner('Loading attendance records...'):
         subjects = get_student_subjects(student_id)
         logs = get_student_attendance(student_id)
 
+    # Date calculations
+    today_dt = datetime.now()
+    today_str = today_dt.strftime("%Y-%m-%d")
+    today_display = today_dt.strftime("%A, %d %B %Y")
+
+    today_logs = []
+    all_logs_formatted = []
     stats_map = {}
 
     for log in logs:
-        sid = log['subject_id']
-
+        sid = log.get('subject_id')
         if sid not in stats_map:
-            stats_map[sid] = {"total":0, "attended": 0}
+            stats_map[sid] = {"total": 0, "attended": 0}
 
-        stats_map[sid]['total'] +=1
-
-        if log.get('is_present'):
+        stats_map[sid]['total'] += 1
+        is_present = bool(log.get('is_present', False))
+        if is_present:
             stats_map[sid]['attended'] += 1
 
+        ts = log.get('timestamp', '')
+        formatted_date = 'N/A'
+        formatted_time = 'N/A'
+        is_today = False
 
-    cols = st.columns(2)
-    for i, sub_node in enumerate(subjects):
-        sub = sub_node['subjects']
-        sid = sub['subject_id']
+        if ts:
+            try:
+                dt = datetime.fromisoformat(ts.replace('Z', '+00:00'))
+                formatted_date = dt.strftime("%Y-%m-%d")
+                formatted_time = dt.strftime("%I:%M %p")
+                if dt.date() == today_dt.date() or ts.startswith(today_str):
+                    is_today = True
+            except Exception:
+                if ts.startswith(today_str):
+                    is_today = True
+                formatted_date = ts[:10]
+                formatted_time = ts[11:16] if len(ts) >= 16 else ts
 
+        sub_info = log.get('subjects') or {}
+        item = {
+            'subject_name': sub_info.get('name', 'Unknown Subject'),
+            'subject_code': sub_info.get('subject_code', '-'),
+            'section': sub_info.get('section', '-'),
+            'date': formatted_date,
+            'time': formatted_time,
+            'is_present': is_present,
+            'timestamp': ts,
+        }
 
-        stats = stats_map.get(sid,{"total":0, "attended": 0} )
-        def unenroll_button():
-                if st.button("Unenroll from tihs course", type='tertiary', width='stretch', icon=':material/delete_forever:'):
-                    unenroll_student_to_subject(student_id, sid)
-                    st.toast(f'Unenrolled from {sub['name']} successfully!')
-                    st.rerun()
+        all_logs_formatted.append(item)
+        if is_today:
+            today_logs.append(item)
 
-        with cols[i % 2]:
+    # Overview Metrics Row
+    total_classes = len(logs)
+    total_attended = sum(1 for l in logs if l.get('is_present'))
+    overall_pct = round((total_attended / total_classes * 100), 1) if total_classes > 0 else 0
+    today_present = sum(1 for l in today_logs if l['is_present'])
+    today_absent = sum(1 for l in today_logs if not l['is_present'])
 
-            subject_card(
-                name = sub['name'],
-                code =sub['subject_code'],
-                section = sub['section'],
-                stats = [
-                    ('📅', 'Total', stats['total']),
-                    ('✅', 'Attended', stats['attended']),
-                ],
-                footer_callback=unenroll_button
-            )
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
+        st.metric(label="📅 Today", value=today_dt.strftime("%d %b %Y"))
+    with m2:
+        st.metric(label="✅ Today's Present", value=f"{today_present} Class{'es' if today_present != 1 else ''}")
+    with m3:
+        st.metric(label="❌ Today's Absent", value=f"{today_absent} Class{'es' if today_absent != 1 else ''}")
+    with m4:
+        st.metric(label="📊 Overall Rate", value=f"{overall_pct}%")
+
+    st.divider()
+
+    # Dashboard Tabs
+    tab_today, tab_subjects, tab_history = st.tabs([
+        "📋 Today's Attendance (आज की हाज़िरी)",
+        "📚 Enrolled Subjects (दाखिल विषय)",
+        "📜 Full History (पूरा रिकॉर्ड)",
+    ])
+
+    # TAB 1: TODAY'S ATTENDANCE LIST
+    with tab_today:
+        st.subheader(f"Today's Attendance List ({today_display})")
+
+        if today_logs:
+            st.caption(f"Showing {len(today_logs)} attendance record(s) recorded for today:")
+            for item in today_logs:
+                render_today_attendance_card(item)
+
+            # Also provide a quick summary dataframe view option
+            with st.expander("📊 View as Table"):
+                df_today = pd.DataFrame([
+                    {
+                        "Subject": item['subject_name'],
+                        "Subject Code": item['subject_code'],
+                        "Section": item['section'],
+                        "Time": item['time'],
+                        "Status": "✅ Present" if item['is_present'] else "❌ Absent",
+                    }
+                    for item in today_logs
+                ])
+                st.dataframe(df_today, hide_index=True, width='stretch')
+        else:
+            st.info(f"ℹ️ **No attendance marked for today yet ({today_display}).**\n\nWhen your teacher takes attendance in class, your status (**Present** / **Absent**) will appear here automatically.")
+
+    # TAB 2: ENROLLED SUBJECTS
+    with tab_subjects:
+        c1, c2 = st.columns(2)
+        with c1:
+            st.subheader('Your Enrolled Subjects')
+        with c2:
+            if st.button('Enroll in Subject', type='primary', width='stretch'):
+                enroll_dialog()
+
+        if subjects:
+            cols = st.columns(2)
+            for i, sub_node in enumerate(subjects):
+                sub = sub_node['subjects']
+                sid = sub['subject_id']
+                stats = stats_map.get(sid, {"total": 0, "attended": 0})
+
+                def make_unenroll_callback(s_id=sid, s_name=sub['name']):
+                    def unenroll_button():
+                        if st.button("Unenroll from this course", type='tertiary', width='stretch', icon=':material/delete_forever:', key=f"unenroll_{s_id}"):
+                            unenroll_student_to_subject(student_id, s_id)
+                            st.toast(f'Unenrolled from {s_name} successfully!')
+                            st.rerun()
+                    return unenroll_button
+
+                with cols[i % 2]:
+                    subject_card(
+                        name=sub['name'],
+                        code=sub['subject_code'],
+                        section=sub['section'],
+                        stats=[
+                            ('📅', 'Total', stats['total']),
+                            ('✅', 'Attended', stats['attended']),
+                        ],
+                        footer_callback=make_unenroll_callback(sid, sub['name']),
+                    )
+        else:
+            st.info("You haven't enrolled in any subjects yet. Click **'Enroll in Subject'** above to join your classes.")
+
+    # TAB 3: FULL HISTORY
+    with tab_history:
+        st.subheader("Complete Attendance History")
+        if all_logs_formatted:
+            df_history = pd.DataFrame([
+                {
+                    "Date": item['date'],
+                    "Time": item['time'],
+                    "Subject": item['subject_name'],
+                    "Subject Code": item['subject_code'],
+                    "Section": item['section'],
+                    "Status": "✅ Present" if item['is_present'] else "❌ Absent",
+                }
+                for item in sorted(all_logs_formatted, key=lambda x: x['timestamp'], reverse=True)
+            ])
+            st.dataframe(df_history, hide_index=True, width='stretch')
+        else:
+            st.info("No attendance history found.")
+
     footer_dashboard()
 
 
 def student_screen():
-
-
     style_background_dashboard()
     style_base_layout()
-
 
     if "student_data" in st.session_state:
         student_dashboard()
         return
-    
+
     c1, c2 = st.columns(2, vertical_alignment='center', gap='xxlarge')
     with c1:
         header_dashboard()
@@ -109,7 +252,7 @@ def student_screen():
     st.header('Login using FaceID', text_alignment='center')
     st.space()
     st.space()
-    
+
     show_registration = False
     photo_source = st.camera_input("Position your face in the center")
 

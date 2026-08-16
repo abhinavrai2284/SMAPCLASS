@@ -1,31 +1,8 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import os
 
 def home_screen():
-    # Hide Streamlit Default UI chrome for clean fullscreen landing experience
-    st.markdown("""
-        <style>
-        #MainMenu, footer, header {
-            visibility: hidden !important;
-            display: none !important;
-        }
-        .stApp {
-            background-color: #fcfcfd !important;
-        }
-        .block-container {
-            padding: 0 !important;
-            margin: 0 !important;
-            max-width: 100% !important;
-        }
-        iframe {
-            width: 100vw !important;
-            border: none !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
-    # Read the exact styles.css
+    # Load exact styling into parent Streamlit page
     base_dir = os.path.dirname(os.path.abspath(__file__))
     css_path = os.path.join(base_dir, "..", "..", "frontend", "static", "img", "css", "styles.css")
     if not os.path.exists(css_path):
@@ -36,43 +13,100 @@ def home_screen():
         with open(css_path, "r", encoding="utf-8") as f:
             css_code = f.read()
 
-    # Self-contained HTML with the EXACT same markup and styling
-    html_content = f"""
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>SMAPCLASS - Next-Gen AI Classroom Attendance & Analytics</title>
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Climate+Crisis&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    st.markdown(f"""
         <style>
+        @import url('https://fonts.googleapis.com/css2?family=Climate+Crisis&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+
+        /* Hide Streamlit Header Chrome */
+        #MainMenu, footer, header {{
+            visibility: hidden !important;
+            display: none !important;
+        }}
+
+        .stApp {{
+            background-color: #fcfcfd !important;
+        }}
+
+        .block-container {{
+            padding: 0 !important;
+            max-width: 100% !important;
+        }}
+
+        /* Apply exact landing page stylesheet */
         {css_code}
-        
-        /* Full width and seamless adjustments */
-        html, body {{
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            overflow-x: hidden;
-            background-color: #fcfcfd;
+
+        /* Adjustments for Streamlit Integration */
+        .stApp .navbar {{
+            padding: 12px 60px !important;
+            background-color: #000000 !important;
+            border-bottom: 1px solid #333333 !important;
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 999 !important;
+            margin-bottom: 0 !important;
         }}
-        .navbar {{
-            padding: 14px 60px;
+
+        .stApp .hero {{
+            padding: 80px 30px 60px !important;
+            background-color: #f0f4ff !important;
+            position: relative !important;
+            min-height: auto !important;
         }}
-        .hero {{
-            padding: 100px 40px 80px;
-            background-color: #f0f4ff;
+
+        /* Custom Streamlit Native Button Styling */
+        div[data-testid="stButton"] > button {{
+            border-radius: 100px !important;
+            padding: 14px 28px !important;
+            font-weight: 700 !important;
+            font-size: 1rem !important;
+            font-family: 'Outfit', sans-serif !important;
+            transition: all 0.25s ease !important;
+            border: none !important;
+            width: 100% !important;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.1) !important;
+        }}
+
+        div[data-testid="stButton"] > button:hover {{
+            transform: translateY(-2px) !important;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15) !important;
+        }}
+
+        /* Primary Button */
+        div[data-testid="stButton"] > button[kind="primary"] {{
+            background: #000000 !important;
+            color: #ffffff !important;
+        }}
+        div[data-testid="stButton"] > button[kind="primary"]:hover {{
+            background: #222222 !important;
+        }}
+
+        /* Secondary Button */
+        div[data-testid="stButton"] > button[kind="secondary"] {{
+            background: #5865F2 !important;
+            color: #ffffff !important;
+        }}
+        div[data-testid="stButton"] > button[kind="secondary"]:hover {{
+            background: #4752C4 !important;
+        }}
+
+        .join-wrapper {{
+            max-width: 620px;
+            margin: 0 auto 30px;
+            background: #ffffff;
+            border-radius: 100px;
+            padding: 8px 12px 8px 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+            border: 1px solid #e2e8f0;
         }}
         </style>
-    </head>
-    <body>
+    """, unsafe_allow_html=True)
 
-        <!-- Navigation Bar -->
+    # 1. NAVBAR
+    st.markdown("""
         <header class="navbar">
             <div class="logo">
-                <img src="https://i.ibb.co/YTYGn5qV/logo.png" alt="SMAPCLASS Logo" onerror="this.style.display='none'">
+                <img src="https://i.ibb.co/YTYGn5qV/logo.png" alt="SMAPCLASS Logo" style="height: 38px;">
                 <span class="logo-text">SMAPCLASS</span>
             </div>
             <nav class="nav-links">
@@ -83,17 +117,16 @@ def home_screen():
                 <a href="#tech">Tech Stack</a>
             </nav>
             <div style="display: flex; align-items: center; gap: 14px;">
-                <div class="status-pill" title="AI Biometric Attendance Engine">
+                <div class="status-pill" title="AI Biometric Engine Active">
                     <span class="status-dot online"></span>
-                    <span>AI Engine: Online (8501)</span>
+                    <span>AI Engine: Active</span>
                 </div>
-                <button onclick="navigateTo('teacher')" class="btn-pill" style="border: none; cursor: pointer;">
-                    Launch App ⚡
-                </button>
             </div>
         </header>
+    """, unsafe_allow_html=True)
 
-        <!-- Hero Section -->
+    # 2. HERO SECTION
+    st.markdown("""
         <section class="hero" id="hero">
             <!-- Floating Left Card -->
             <div class="floating-card card-left">
@@ -133,112 +166,118 @@ def home_screen():
             <div class="badge">✨ AI-Powered Biometric Attendance & Analytics</div>
             <h1>Automate & Elevate Your <span>Classroom</span></h1>
             <p>Real-time facial & voice recognition attendance, automatic roster syncing, and instant classroom insights powered by deep machine learning.</p>
-            
-            <!-- Quick Join Form -->
-            <form class="join-container" onsubmit="handleQuickJoin(event)">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                </svg>
-                <input type="text" id="quickJoinInput" class="join-input" placeholder="Enter Subject Join Code (e.g. CS301)..." required autocomplete="off">
-                <button type="submit" class="join-btn">
-                    Join Class
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                </button>
-            </form>
-
-            <div class="hero-actions">
-                <button onclick="navigateTo('teacher')" class="btn-cta" style="border: none; cursor: pointer;">
-                    <span>👨‍🏫</span> Faculty Dashboard
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                </button>
-                <button onclick="navigateTo('student')" class="btn-cta" style="border: none; cursor: pointer; background: #1e1e2f;">
-                    <span>🎓</span> Student FaceID Login
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                </button>
-            </div>
-
-            <div class="integrated">
-                <p>INTEGRATED WITH MODERN LMS & BIOMETRIC ENGINES</p>
-                <div class="logo-strip">
-                    <span style="font-weight: 700; color: #64748b; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="#64748b"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> Supabase Cloud
-                    </span>
-                    <span style="font-weight: 700; color: #64748b; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="#64748b"><circle cx="12" cy="12" r="9"/></svg> dlib Face Vectorizer
-                    </span>
-                    <span style="font-weight: 700; color: #64748b; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="#64748b"><rect x="3" y="3" width="18" height="18" rx="4"/></svg> Resemblyzer Voice
-                    </span>
-                    <span style="font-weight: 700; color: #64748b; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="#64748b"><path d="M4 4h16v16H4z"/></svg> Streamlit Core
-                    </span>
-                </div>
-            </div>
         </section>
+    """, unsafe_allow_html=True)
 
-        <!-- Role Portals Section -->
-        <section class="portals-section" id="portals">
+    # 3. QUICK JOIN BAR & HERO ACTIONS (Native Interactive Controls)
+    col_l, col_center, col_r = st.columns([1, 2.2, 1])
+    with col_center:
+        with st.form("hero_quick_join_form", clear_on_submit=False):
+            st.markdown("<p style='text-align: center; font-weight: 700; color: #475569; margin-bottom: 6px; font-family: Outfit, sans-serif;'>🔑 Enter Subject Join Code to Enroll:</p>", unsafe_allow_html=True)
+            f_col1, f_col2 = st.columns([2.5, 1])
+            with f_col1:
+                join_input = st.text_input("Join Code", placeholder="E.g. CS301...", label_visibility="collapsed")
+            with f_col2:
+                join_submitted = st.form_submit_button("Join Class 🚀", type="primary", use_container_width=True)
+
+            if join_submitted and join_input:
+                st.session_state['login_type'] = 'student'
+                st.query_params['join-code'] = join_input.strip()
+                st.rerun()
+
+        # Hero Action Launch Buttons
+        btn_c1, btn_c2 = st.columns(2, gap="medium")
+        with btn_c1:
+            if st.button("👨‍🏫 Faculty Dashboard", type="primary", use_container_width=True, key="hero_btn_teacher"):
+                st.session_state['login_type'] = 'teacher'
+                st.rerun()
+        with btn_c2:
+            if st.button("🎓 Student FaceID Login", type="secondary", use_container_width=True, key="hero_btn_student"):
+                st.session_state['login_type'] = 'student'
+                st.rerun()
+
+    # 4. INTEGRATED LOGO STRIP
+    st.markdown("""
+        <div class="integrated" style="margin-top: 40px; margin-bottom: 60px;">
+            <p>INTEGRATED WITH MODERN LMS & BIOMETRIC ENGINES</p>
+            <div class="logo-strip">
+                <span style="font-weight: 700; color: #64748b; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="#64748b"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg> Supabase Cloud
+                </span>
+                <span style="font-weight: 700; color: #64748b; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="#64748b"><circle cx="12" cy="12" r="9"/></svg> dlib Face Vectorizer
+                </span>
+                <span style="font-weight: 700; color: #64748b; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="#64748b"><rect x="3" y="3" width="18" height="18" rx="4"/></svg> Resemblyzer Voice
+                </span>
+                <span style="font-weight: 700; color: #64748b; font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="#64748b"><path d="M4 4h16v16H4z"/></svg> Streamlit Core
+                </span>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # 5. DEDICATED ROLE PORTALS SECTION
+    st.markdown("""
+        <section class="portals-section" id="portals" style="padding: 0 40px 60px;">
             <div class="portals-header">
                 <span class="badge" style="margin-bottom: 16px;">⚡ Direct Access Portals</span>
                 <h2>Choose Your Role</h2>
                 <p>Select your dashboard to manage classroom sessions or enroll as a student.</p>
             </div>
-
-            <div class="portals-grid">
-                <!-- Teacher Card -->
-                <div class="portal-card teacher-card">
-                    <div>
-                        <div class="portal-header">
-                            <div class="portal-icon teacher">👨‍🏫</div>
-                            <div>
-                                <div class="portal-tag teacher">Faculty & Instructors</div>
-                                <div class="portal-title">Teacher Portal</div>
-                            </div>
-                        </div>
-                        <p class="portal-desc">Create subjects, manage enrolled student rosters, batch analyze classroom attendance photos, and run voice speaker recognition.</p>
-                        <ul class="portal-features">
-                            <li><span class="check">✓</span> <span>AI Classroom Photo & Group Scan</span></li>
-                            <li><span class="check">✓</span> <span>Voice Audio Speaker Identification</span></li>
-                            <li><span class="check">✓</span> <span>Subject Management & Instant QR Codes</span></li>
-                            <li><span class="check">✓</span> <span>Historical Attendance Logs & Analytics</span></li>
-                        </ul>
-                    </div>
-                    <div class="portal-actions-row">
-                        <button onclick="navigateTo('teacher')" class="portal-btn primary" style="width: 100%;">
-                            Open Teacher Dashboard 👨‍🏫
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Student Card -->
-                <div class="portal-card student-card">
-                    <div>
-                        <div class="portal-header">
-                            <div class="portal-icon student">🎓</div>
-                            <div>
-                                <div class="portal-tag student">Students & Learners</div>
-                                <div class="portal-title">Student Portal</div>
-                            </div>
-                        </div>
-                        <p class="portal-desc">Enroll in subjects with one-click Join Codes or QR scans, register your facial biometrics and voice signature for instant attendance.</p>
-                        <ul class="portal-features">
-                            <li><span class="check">✓</span> <span>Biometric Face Login & Verification</span></li>
-                            <li><span class="check">✓</span> <span>Instant Subject Join via Code or QR</span></li>
-                            <li><span class="check">✓</span> <span>Personal Attendance Percentage & Logs</span></li>
-                            <li><span class="check">✓</span> <span>Voice Profile & Audio Sample Enrollment</span></li>
-                        </ul>
-                    </div>
-                    <div class="portal-actions-row">
-                        <button onclick="navigateTo('student')" class="portal-btn primary" style="width: 100%; background: #1e1e2f;">
-                            Open Student Dashboard 🎓
-                        </button>
-                    </div>
-                </div>
-            </div>
         </section>
+    """, unsafe_allow_html=True)
 
-        <!-- Features Section -->
+    p_col_pad1, p_col1, p_col2, p_col_pad2 = st.columns([0.2, 1, 1, 0.2], gap="large")
+
+    with p_col1:
+        st.markdown("""
+            <div class="portal-card teacher-card" style="margin-bottom: 16px;">
+                <div class="portal-header">
+                    <div class="portal-icon teacher">👨‍🏫</div>
+                    <div>
+                        <div class="portal-tag teacher">Faculty & Instructors</div>
+                        <div class="portal-title">Teacher Portal</div>
+                    </div>
+                </div>
+                <p class="portal-desc">Create subjects, manage enrolled student rosters, batch analyze classroom attendance photos, and run voice speaker recognition.</p>
+                <ul class="portal-features">
+                    <li><span class="check">✓</span> <span>AI Classroom Photo & Group Scan</span></li>
+                    <li><span class="check">✓</span> <span>Voice Audio Speaker Identification</span></li>
+                    <li><span class="check">✓</span> <span>Subject Management & Instant QR Codes</span></li>
+                    <li><span class="check">✓</span> <span>Historical Attendance Logs & Analytics</span></li>
+                </ul>
+            </div>
+        """, unsafe_allow_html=True)
+        if st.button("Open Teacher Dashboard 👨‍🏫", type="primary", use_container_width=True, key="portal_card_btn_teacher"):
+            st.session_state['login_type'] = 'teacher'
+            st.rerun()
+
+    with p_col2:
+        st.markdown("""
+            <div class="portal-card student-card" style="margin-bottom: 16px;">
+                <div class="portal-header">
+                    <div class="portal-icon student">🎓</div>
+                    <div>
+                        <div class="portal-tag student">Students & Learners</div>
+                        <div class="portal-title">Student Portal</div>
+                    </div>
+                </div>
+                <p class="portal-desc">Enroll in subjects with one-click Join Codes or QR scans, register your facial biometrics and voice signature for instant attendance.</p>
+                <ul class="portal-features">
+                    <li><span class="check">✓</span> <span>Biometric Face Login & Verification</span></li>
+                    <li><span class="check">✓</span> <span>Instant Subject Join via Code or QR</span></li>
+                    <li><span class="check">✓</span> <span>Personal Attendance Percentage & Logs</span></li>
+                    <li><span class="check">✓</span> <span>Voice Profile & Audio Sample Enrollment</span></li>
+                </ul>
+            </div>
+        """, unsafe_allow_html=True)
+        if st.button("Open Student Dashboard 🎓", type="secondary", use_container_width=True, key="portal_card_btn_student"):
+            st.session_state['login_type'] = 'student'
+            st.rerun()
+
+    # 6. FEATURES GRID
+    st.markdown("""
         <section class="features" id="features">
             <h2>Built for High-Precision Classrooms</h2>
             <div class="feature-grid">
@@ -274,8 +313,10 @@ def home_screen():
                 </div>
             </div>
         </section>
+    """, unsafe_allow_html=True)
 
-        <!-- Teacher Flow Section -->
+    # 7. TEACHER 3-STEP FLOW
+    st.markdown("""
         <section class="teacher-flow" id="workflow">
             <div class="flow-container">
                 <!-- Step 1 -->
@@ -299,7 +340,6 @@ def home_screen():
 
                             <rect x="290" y="40" width="270" height="280" rx="16" fill="#1e293b"/>
                             <text x="310" y="75" font-family="'Outfit', sans-serif" font-size="14" fill="#ffffff" font-weight="700">Enrolled Roster (48)</text>
-                            
                             <rect x="310" y="95" width="230" height="40" rx="8" fill="#0f172a"/>
                             <circle cx="330" cy="115" r="12" fill="#5865F2"/>
                             <text x="352" y="120" font-family="'Outfit', sans-serif" font-size="12" fill="#e2e8f0" font-weight="600">Aarav Sharma</text>
@@ -314,9 +354,6 @@ def home_screen():
                             <circle cx="330" cy="215" r="12" fill="#3b82f6"/>
                             <text x="352" y="220" font-family="'Outfit', sans-serif" font-size="12" fill="#e2e8f0" font-weight="600">Rohan Verma</text>
                             <text x="520" y="220" font-family="'Outfit', sans-serif" font-size="10" fill="#4BB786" font-weight="700" text-anchor="end">READY</text>
-
-                            <rect x="310" y="250" width="230" height="45" rx="10" fill="#5865F2"/>
-                            <text x="425" y="278" font-family="'Outfit', sans-serif" font-size="13" fill="#ffffff" font-weight="700" text-anchor="middle">Take Attendance 📸</text>
                         </svg>
                     </div>
                 </div>
@@ -328,21 +365,17 @@ def home_screen():
                             <rect width="600" height="360" fill="#0b0f19"/>
                             <rect x="40" y="30" width="520" height="50" rx="10" fill="#1e293b"/>
                             <text x="60" y="60" font-family="'Outfit', sans-serif" font-size="16" fill="#ffffff" font-weight="700">AI Facial & Voice Pipeline Active</text>
-                            
                             <rect x="40" y="95" width="520" height="48" rx="8" fill="#182234"/>
                             <text x="60" y="125" font-family="'Outfit', sans-serif" font-size="13" fill="#cbd5e1" font-weight="600">01. Devansh Verma (Face Scan)</text>
+                            <text x="320" y="125" font-family="'Outfit', sans-serif" font-size="12" fill="#94a3b8">Score: 0.99</text>
                             <rect x="440" y="107" width="100" height="24" rx="12" fill="#4BB786" fill-opacity="0.2"/>
                             <text x="490" y="123" font-family="'Outfit', sans-serif" font-size="11" fill="#4BB786" font-weight="700" text-anchor="middle">PRESENT ✓</text>
 
                             <rect x="40" y="153" width="520" height="48" rx="8" fill="#182234"/>
                             <text x="60" y="183" font-family="'Outfit', sans-serif" font-size="13" fill="#cbd5e1" font-weight="600">02. Priya Sharma (Voice Print)</text>
+                            <text x="320" y="183" font-family="'Outfit', sans-serif" font-size="12" fill="#94a3b8">Cosine: 0.94</text>
                             <rect x="440" y="165" width="100" height="24" rx="12" fill="#4BB786" fill-opacity="0.2"/>
                             <text x="490" y="181" font-family="'Outfit', sans-serif" font-size="11" fill="#4BB786" font-weight="700" text-anchor="middle">PRESENT ✓</text>
-
-                            <rect x="40" y="211" width="520" height="48" rx="8" fill="#182234"/>
-                            <text x="60" y="241" font-family="'Outfit', sans-serif" font-size="13" fill="#cbd5e1" font-weight="600">03. Rohan Gupta (Face Scan)</text>
-                            <rect x="440" y="223" width="100" height="24" rx="12" fill="#4BB786" fill-opacity="0.2"/>
-                            <text x="490" y="239" font-family="'Outfit', sans-serif" font-size="11" fill="#4BB786" font-weight="700" text-anchor="middle">PRESENT ✓</text>
                         </svg>
                     </div>
                     <div class="flow-content">
@@ -353,8 +386,10 @@ def home_screen():
                 </div>
             </div>
         </section>
+    """, unsafe_allow_html=True)
 
-        <!-- Tech Stack Section -->
+    # 8. TECH STACK SECTION
+    st.markdown("""
         <section class="tech-stack" id="tech">
             <span class="section-tag">ENGINEERED FOR BIOMETRIC SPEED & SCALE</span>
             <h2>Under The Hood</h2>
@@ -385,22 +420,29 @@ def home_screen():
                 </div>
             </div>
         </section>
+    """, unsafe_allow_html=True)
 
-        <!-- Purple CTA Section -->
+    # 9. PURPLE CTA SECTION
+    st.markdown("""
         <section class="purple-section" id="cta">
             <h2>Ready to Experience SMAPCLASS?</h2>
             <p>Experience the future of seamless AI attendance tracking and classroom management today.</p>
-            <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-                <button onclick="navigateTo('teacher')" class="btn-white" style="border: none; cursor: pointer;">
-                    Launch Faculty Dashboard 👨‍🏫
-                </button>
-                <button onclick="navigateTo('student')" class="btn-white" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid white; cursor: pointer;">
-                    Launch Student Portal 🎓
-                </button>
-            </div>
         </section>
+    """, unsafe_allow_html=True)
 
-        <!-- Main Footer -->
+    # CTA Buttons
+    c_pad_l, c_btn1, c_btn2, c_pad_r = st.columns([1, 1.5, 1.5, 1])
+    with c_btn1:
+        if st.button("Launch Faculty Dashboard 👨‍🏫", type="primary", use_container_width=True, key="cta_btn_teacher"):
+            st.session_state['login_type'] = 'teacher'
+            st.rerun()
+    with c_btn2:
+        if st.button("Launch Student Portal 🎓", type="secondary", use_container_width=True, key="cta_btn_student"):
+            st.session_state['login_type'] = 'student'
+            st.rerun()
+
+    # 10. MAIN FOOTER
+    st.markdown("""
         <footer class="main-footer" id="about">
             <div class="footer-grid">
                 <div class="footer-brand">
@@ -411,19 +453,12 @@ def home_screen():
                     <p>AI-powered smart attendance system using biometric face and voice recognition pipelines.</p>
                 </div>
                 <div class="footer-links">
-                    <h4>Direct Portals</h4>
-                    <ul>
-                        <li><a href="javascript:void(0)" onclick="navigateTo('teacher')">Teacher Dashboard</a></li>
-                        <li><a href="javascript:void(0)" onclick="navigateTo('student')">Student Portal</a></li>
-                    </ul>
+                    <h4>Portals</h4>
+                    <p style="color: #94a3b8; font-size: 0.95rem;">• Faculty Dashboard<br>• Student FaceID Scan</p>
                 </div>
                 <div class="footer-links">
-                    <h4>System</h4>
-                    <ul>
-                        <li><a href="#features">Features</a></li>
-                        <li><a href="#workflow">How It Works</a></li>
-                        <li><a href="#tech">Tech Architecture</a></li>
-                    </ul>
+                    <h4>Features</h4>
+                    <p style="color: #94a3b8; font-size: 0.95rem;">• Multi-Face Scan<br>• Voice Biometrics<br>• Dynamic QR</p>
                 </div>
                 <div class="footer-links">
                     <h4>Connected Endpoints</h4>
@@ -436,32 +471,4 @@ def home_screen():
                 <p>© 2026 SMAPCLASS. Powered by Streamlit, Supabase, dlib & Resemblyzer AI.</p>
             </div>
         </footer>
-
-        <!-- Javascript Navigation Bridge to Streamlit -->
-        <script>
-            function navigateTo(role) {{
-                try {{
-                    window.parent.location.search = '?role=' + role;
-                }} catch (e) {{
-                    window.location.search = '?role=' + role;
-                }}
-            }}
-
-            function handleQuickJoin(event) {{
-                event.preventDefault();
-                var code = document.getElementById('quickJoinInput').value.trim();
-                if (code) {{
-                    try {{
-                        window.parent.location.search = '?role=student&join-code=' + encodeURIComponent(code);
-                    }} catch (e) {{
-                        window.location.search = '?role=student&join-code=' + encodeURIComponent(code);
-                    }}
-                }}
-            }}
-        </script>
-    </body>
-    </html>
-    """
-
-    # Render 100% pixel-for-pixel exact full HTML page
-    components.html(html_content, height=3100, scrolling=False)
+    """, unsafe_allow_html=True)

@@ -26,23 +26,22 @@ def main():
         """)
         return
 
-    # Check query param for direct navigation from landing page iframe
-    role_param = st.query_params.get('role')
-    if role_param in ['teacher', 'student']:
-        st.session_state['login_type'] = role_param
-    elif 'login_type' not in st.session_state:
-        st.session_state['login_type'] = None
+    # Check query param on first load
+    if 'login_type' not in st.session_state:
+        role_param = st.query_params.get('role')
+        if role_param in ['teacher', 'student']:
+            st.session_state['login_type'] = role_param
+        else:
+            st.session_state['login_type'] = None
 
-    # Routing
-    match st.session_state['login_type']:
-        case 'teacher':
-            teacher_screen()
-
-        case 'student':
-            student_screen()
-
-        case _:
-            home_screen()
+    # Clean Routing based on session_state
+    current_type = st.session_state.get('login_type')
+    if current_type == 'teacher':
+        teacher_screen()
+    elif current_type == 'student':
+        student_screen()
+    else:
+        home_screen()
 
     # Join Code Auto-Enrollment
     join_code = st.query_params.get('join-code')

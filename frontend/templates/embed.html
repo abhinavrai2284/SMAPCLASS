@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SMAPCLASS - Live Portal View</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='img/css/styles.css') }}">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/css/logo.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/logo.png') }}">
     <style>
         body, html {
             margin: 0;
@@ -43,7 +43,7 @@
     <div class="embed-bar">
         <div style="display: flex; align-items: center; gap: 14px;">
             <a href="/" style="text-decoration: none; color: #ffffff; display: flex; align-items: center; gap: 10px;">
-                <img src="{{ url_for('static', filename='img/css/logo.png') }}" height="30" alt="Logo" onerror="this.style.display='none'">
+                <img src="{{ url_for('static', filename='img/logo.png') }}" height="30" alt="Logo" onerror="this.src='/static/logo.png'">
                 <span style="font-family: 'Climate Crisis', sans-serif; font-size: 1.2rem;">SMAPCLASS</span>
             </a>
             <span class="status-pill" style="padding: 4px 12px; font-size: 0.75rem;">

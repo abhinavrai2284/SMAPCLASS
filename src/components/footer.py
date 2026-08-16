@@ -1,24 +1,26 @@
 import streamlit as st
 
-
 def footer_home():
-    logo_url = "https://signature.freefire-name.com/img.php?f=6&t=Abhinav%20Singh"
-    
-    st.markdown(f"""
-        <div style="margin-top:2rem; display:flex; gap:6px; justify-content:center; align-items:center">
-        <p style="font-weight:bold; color:white;"> Created with ❤️ by </p>  
-        <img src='{logo_url}' style='max-height:25px' />
+    st.markdown("""
+        <div style="margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 8px;">
+            <p style="font-size: 0.88rem; color: #94a3b8; margin: 0;">
+                ⚡ <b>SMAPCLASS</b> • Automated Face & Voice Biometric Attendance Platform
+            </p>
+            <p style="font-size: 0.78rem; color: #64748b; margin: 0;">
+                Powered by dlib 128-d Vectorizer, Resemblyzer AI Speaker Recognition & Supabase Cloud
+            </p>
         </div>
-                
-                """, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
+
 
 def footer_dashboard():
-    logo_url = "https://signature.freefire-name.com/img.php?f=6&t=Abhinav%20Singh"
-    
-    st.markdown(f"""
-        <div style="margin-top:2rem; display:flex; gap:6px; justify-content:center; align-items:center">
-        <p style="font-weight:bold; color:black;"> Created with ❤️ by </p>  
-        <img src='{logo_url}' style='max-height:25px' />
+    st.markdown("""
+        <div style="margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+            <p style="font-size: 0.82rem; color: #64748b; margin: 0;">
+                <b>SMAPCLASS</b> • Enterprise Classroom AI Attendance
+            </p>
+            <p style="font-size: 0.82rem; color: #94a3b8; margin: 0;">
+                Session Active 🟢
+            </p>
         </div>
-                
-                """, unsafe_allow_html=True)    
+    """, unsafe_allow_html=True)

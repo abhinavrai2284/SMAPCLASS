@@ -7,6 +7,8 @@ import time
 
 @st.dialog("Capture or upload photos")
 def add_photos_dialog():
+    if 'attendance_images' not in st.session_state:
+        st.session_state.attendance_images = []
 
     st.write('Add classroom photos to scan for attendance')
 

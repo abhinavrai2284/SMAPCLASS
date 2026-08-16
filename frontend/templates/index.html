@@ -5,15 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SMAPCLASS - Next-Gen AI Classroom Attendance & Analytics</title>
     <meta name="description" content="SMAPCLASS: Automated face recognition attendance, real-time engagement analytics, and classroom management powered by AI.">
-    <link rel="stylesheet" href="{{ url_for('static', filename='img/css/styles.css') }}">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/css/logo.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/logo.png') }}">
 </head>
 <body>
 
     <!-- Navigation Bar -->
     <header class="navbar">
         <div class="logo">
-            <img src="{{ url_for('static', filename='img/css/logo.png') }}" alt="SMAPCLASS Logo" onerror="this.style.display='none'">
+            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="SMAPCLASS Logo" onerror="this.src='/static/logo.png'">
             <span class="logo-text">SMAPCLASS</span>
         </div>
         <nav class="nav-links">
@@ -390,7 +390,7 @@
         <div class="footer-grid">
             <div class="footer-brand">
                 <div class="logo">
-                    <img src="{{ url_for('static', filename='img/css/logo.png') }}" alt="SMAPCLASS Logo" onerror="this.style.display='none'">
+                    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="SMAPCLASS Logo" onerror="this.src='/static/logo.png'">
                     <span class="logo-text">SMAPCLASS</span>
                 </div>
                 <p>AI-powered smart attendance system using biometric face and voice recognition pipelines.</p>

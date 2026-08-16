@@ -303,6 +303,7 @@ def teacher_screen_login():
     with c2:
         if st.button("Go back to Home", type='secondary', key='loginbackbtn', shortcut="control+backspace"):
             st.session_state['login_type'] = None
+            st.query_params.clear()
             st.rerun()
 
     st.header('Login using password', text_alignment='center')
@@ -358,6 +359,7 @@ def teacher_screen_register():
     with c2:
         if st.button("Go back to Home", type='secondary', key='loginbackbtn', shortcut="control+backspace"):
             st.session_state['login_type'] = None
+            st.query_params.clear()
             st.rerun()
 
 
